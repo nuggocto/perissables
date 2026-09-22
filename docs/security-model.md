@@ -2,7 +2,6 @@
 
 Status: Normative game/runtime threat scope
 Owner: Sole developer
-Updated: 2026-09-12
 
 Product controls and compatibility behavior derive from
 `docs/mvp-contract.md`. This model covers the shipped game client/server and
@@ -12,7 +11,8 @@ built-in content.
 
 Protect authoritative run integrity, player/session identity, Steam tickets,
 hidden per-player state, local files, built-in content, service availability,
-release artifacts, and operator credentials.
+release artifacts, and operator credentials, including the Steam Web API
+publisher key.
 
 Prevent a client from acting as another player, deciding authoritative outcomes,
 reading hidden state, replaying actions into invalid mutation, redirecting Steam
@@ -41,8 +41,8 @@ proof to an untrusted endpoint, or consuming unbounded resources.
 | Active-run loss | In-memory-only sessions; stable run-lost error; graceful drain | Clean drain, deadline, forced-stop, and crash tests | A process or regional outage can end active runs |
 | Native/dependency/build compromise | Pinned sources/checksums, minimal unsafe adapters, protected release jobs, advisories/licenses, reproducible artifacts | Wrapper tests/sanitizers where supported, dependency review, signature/provenance checks | Upstream compromise may evade known checks |
 
-Accepted residual risk records an owner, rationale, review date, and release-owner
-approval.
+Accepted residual risk is written down with a one-line rationale next to the
+finding it accepts.
 
 ## Required controls
 
@@ -53,7 +53,8 @@ approval.
 - Validate identity, authorization, phase, target, revision, sequence, rate, and
   resource bounds before state mutation.
 - Keep Steam tickets only as long as validation requires. Never log or persist
-  them raw.
+  them raw. Validate them server-side through the Steam Web API; the publisher
+  key lives only in the deployment's secret store.
 - A fresh validated Steam identity can reclaim only its own reserved in-memory
   seat.
 - New-seat admission to an existing session requires the contract's join grant
@@ -75,12 +76,15 @@ approval.
   other peers are ignored.
 - Built-in JSON/TMX parsing disables external entities, external resources, and
   network access and enforces schema/resource bounds before session admission.
+  Built-in content is repository-authored, so validation targets authoring
+  mistakes; untrusted-input hardening such as fuzzing is reserved for network
+  input.
 - Long-lived tasks have explicit owners, cancellation, and joined outcomes.
 - Structured logs identify operations without message bodies, credentials, or
   personal data.
-- A draining process refuses new admission, grants, and run starts. Idle lobbies
-  and completed summaries end under the contract's deadlines even if clients
-  stay connected. A forced stop never claims a clean drain or recovered run.
+- Drain follows [the contract](mvp-contract.md#in-memory-sessions-and-draining):
+  bounded, independent of connected clients, and a forced stop never claims a
+  clean drain or recovered run.
 
 ## Supply chain and release
 
@@ -115,7 +119,7 @@ approval.
 
 - Security tests use local or explicitly authorized isolated staging with
   synthetic/project-controlled data.
-- Fuzzing follows `docs/test-strategy.md`; resource measurements follow
+- Protocol fuzzing follows `docs/test-strategy.md`; resource measurements follow
   `docs/benchmark-plan.md`.
 - Stop once a risk is established. Do not access another party's data, use a
   discovered credential, load-test a third party, or suppress a credible issue

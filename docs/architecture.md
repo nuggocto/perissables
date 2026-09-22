@@ -17,13 +17,13 @@ provisional until their named decision gates pass.
 
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
-| Client | Rust + `raylib` (`raylib-rs`) | Window, rendering, input, UI, audio |
+| Client | Rust + `raylib` (`raylib-rs`) | Window, rendering, input, UI, audio, local movement prediction |
 | Server | Rust + `axum` + `tower` + `tokio` | Sessions, authority, health, networking |
 | Shared rules | Headless Rust crate | Story, dice, combat, character, and run state machines |
 | Protocol | `serde` + `serde_json` over WebSockets | Versioned intents, views, events, and errors |
-| Content | JSON + TMX validated by `game_core` | Immutable built-in declarative data |
+| Content | JSON + TMX loaded and validated by the `content` crate | Immutable built-in declarative data shared by client and server |
 | Session state | Server memory | Active lobbies and runs; no database or long-term save |
-| Hosting | Railway | Regional staging and production server environments |
+| Hosting | Railway | Regional staging and production server environments; Steam Web API ticket validation |
 | Distribution | Steam | Ownership, lobbies/invites, and Linux/Windows depots |
 
 ## System Shape
@@ -104,7 +104,12 @@ crates/
       character/
       item/
       dice/
-      content/
+  content/
+    src/
+      schema/
+      load/
+      validate/
+      checksum.rs
   shared/
     src/
       protocol/
@@ -118,16 +123,18 @@ stories/
   builtin/
 ```
 
-Workspace members are `client`, `server`, `game_core`, `shared`, and
-`integration_tests`. Package names use the `les-perissables-` prefix.
+Workspace members are `client`, `server`, `game_core`, `content`, `shared`,
+and `integration_tests`. Package names use the `les-perissables-` prefix.
 
 Dependency direction is one-way:
 
 - `shared` owns protocol DTOs, IDs, and common logging setup.
-- `game_core` depends on `shared` and owns pure built-in content validation.
-- `server` depends on `shared` and `game_core`.
-- `client` depends on `shared` only and renders authoritative views; it does not
-  link gameplay rules.
+- `content` owns built-in content DTOs, JSON/TMX loading from bytes, pure
+  validation, and the canonical checksum. It holds no gameplay rules.
+- `game_core` depends on `shared` and `content`.
+- `server` depends on `shared`, `content`, and `game_core`.
+- `client` depends on `shared` and `content` so it can render the map, text,
+  and assets; it does not link `game_core` or gameplay rules.
 - `integration_tests` may depend on every workspace crate.
 
 Reverse dependencies and cycles are forbidden.
@@ -141,7 +148,8 @@ process-global access.
   start-run entropy.
 - Randomness and time are injected.
 - Operations return new revisions plus stable events/results.
-- Built-in content DTOs and pure validators live here; storage I/O does not.
+- Built-in content arrives as validated `content` DTOs; storage I/O stays in
+  the server and client.
 - Tests can replay the same transcript without a renderer or socket.
 
 ## Runtime Ownership
@@ -151,26 +159,24 @@ process-global access.
 - Every task, timeout, queue, and blocking operation is bounded.
 - Critical tasks are cancelled and joined explicitly; dropped handles may not
   silently detach authoritative work.
-- Native `raylib` and Steamworks calls stay behind small safe adapters.
+- Native `raylib` and client-side Steamworks calls stay behind small safe
+  adapters. The server validates Steam tickets through the Steam Web API and
+  does not link the Steamworks SDK.
 - `unsafe` is forbidden in domain crates. Adapter unsafe blocks require a
   local `SAFETY` explanation and tests for lifetime/thread-affinity contracts.
 
-## In-memory sessions and deployment drain
+## In-memory sessions, regions, and drain
 
 One session owner holds one authoritative lobby/run in memory. There is no
-persistence adapter or database in MVP.
+persistence adapter or database in MVP. A session lives in the region its
+creator's client selected and never moves; each regional service runs one
+process, so the region endpoint reaches the owning process.
 
-A deploy marks the process unready and refuses new admission, grants, and run
-starts. Idle lobbies end; active runs finish through summary and then end without
-returning to a lobby on that process. Reserved seats may rejoin non-ended
-running/summary sessions within the absolute deadlines. Bounded cleanup permits
-exit even when clients stay connected. Phase 10 measures the drain window and
-proves these contract transitions on Railway.
-
-Idle/completed sessions receive a maintenance notice. A deadline, process crash,
-or forced stop that interrupts a run uses the stable run-lost path. Regional
-routing must not send a reserved-seat rejoin to a replacement process that cannot
-own the in-memory session.
+Deployment drain, run-loss, and rejoin-while-draining behavior are defined in
+[the contract](mvp-contract.md#in-memory-sessions-and-draining). The Phase 01
+Railway spike and Phase 10 decision establish whether a draining Railway
+deployment can still receive rejoins; the architecture changes before Phase 11
+if it cannot.
 
 ## Engineering Practices
 

@@ -2,7 +2,6 @@
 
 Status: Normative performance experiment policy
 Owner: Sole developer
-Updated: 2026-09-12
 
 Performance is established by production-mode measurements, not by contract
 detail or code inspection. Product targets come from `docs/mvp-contract.md`.
@@ -46,43 +45,24 @@ numbers are not release claims.
 | Client presentation/frame gates | Exact production client package digests |
 | Bounded server latency/resource checks at the authorized account count | Exact production server digest; record the actual load and do not infer 64-session capacity from it |
 
-Both capacity and exact-production evidence are required in Phase 13. Here,
-non-release means a non-distributable feature set, not a debug optimization
-profile. Never enable the synthetic adapter in the production artifact to make
-the capacity workload run, and never label the adapter build's measurements as
-measurements of the production digest.
+Both capacity and exact-production evidence are required in Phase 13.
+Non-release here means a non-distributable feature set, not a debug optimization
+profile. Never enable the synthetic adapter in the production artifact, and never
+label the capacity build's measurements as measurements of the production
+digest.
 
-Pair the builds in one release evidence manifest:
+Build both artifacts from the same clean final Git revision, `Cargo.lock`, and
+content aggregate, with the same profile and toolchain. Write a short
+differences note next to both reports: the build commands, both digests, and the
+feature/dependency differences, which should be limited to the identity-adapter
+selection. The adapter replaces only identity acquisition and validation; seat,
+grant, content, authorization, rate, queue, and gameplay paths are the same, and
+synthetic new seats obtain owner grants through the normal protocol.
 
-- Record both digests and exact build commands from the same clean final Git
-  revision, `Cargo.lock`, content aggregate identity, and pinned build inputs.
-- Match target, Rust/native toolchains, optimization, LTO, panic/overflow/debug
-  assertion settings, allocator, and runtime limits. Record dependency and
-  feature differences; permit only the isolated identity-adapter selection and
-  its necessary dependencies. Unrelated source, feature, or configuration
-  differences invalidate the pairing.
-- Keep production admission, content matching, session mutation, serialization,
-  authorization, rate limits, queues, and network paths identical after identity
-  validation. Adapter input is bounded and uses unique synthetic principals;
-  it cannot bypass those checks or reach Steam. Synthetic new seats obtain
-  owner-authorized join grants through the same protocol; setup records their
-  outcomes outside steady-state timing.
-- Qualify the real identity path separately. At a common small load supported by
-  the authorized account pool, compare both builds' post-auth behavior and
-  unprofiled timing under the same workload/environment. Freeze practical
-  tolerance in Phase 12 before the final comparison; an unexplained difference
-  or uncertainty across the gate is `INCONCLUSIVE`.
-- Prove production adapter absence by feature/build inspection and package
-  verification. Store commands, feature/dependency differences, workload IDs,
-  both reports, and the pairing verdict together.
-
-Phase 12 freezes the small-load schedule, account count, sample sufficiency,
-latency/resource gates, and equivalence tolerance. Phase 13 reruns the capacity
-gates on the paired final capacity build and the matrix's production gates on
-exact final artifacts. A change to final source, content, build flags, or runtime
-limits requires a new pairing and affected measurements. Missing either set of
-required evidence blocks Release-ready. Capacity remains evidence about the
-paired build under its stated conditions, not proof of binary identity.
+Prove production adapter absence by feature/build inspection and package
+verification. A change to final source, content, build flags, or runtime limits
+requires rerunning the affected measurements. Missing either set of evidence
+blocks Release-ready.
 
 ## Phase 10 regional deployment and drain spike
 
@@ -95,12 +75,14 @@ in-memory session while keeping drain and rollback simple for one developer?
 ### Workloads
 
 - Create/join and latency probes worldwide against an initial
-  Americas/Europe/Asia candidate topology.
+  Americas/Europe/Asia candidate topology, with the session placed in the
+  creator's lowest-latency region.
 - Same-area and cross-area parties through lobby, world, vote, combat, and
   summary traffic.
 - Controlled latency-impairment playtests that freeze the highest acceptable
   cross-area movement/input latency before choosing the region set.
-- Client disconnect/rejoin routed back to the owning live process.
+- Client disconnect/rejoin routed back to the owning live process, including
+  while that process drains after a replacement deployment goes live.
 - Mark one process unready; refuse new admission, grants, and run starts. Keep
   clients connected while idle lobbies end and short/full-length runs finish
   through summary to `Ended`. Exercise missing summary acknowledgements,
@@ -115,7 +97,7 @@ rejoin correctness, drain duration, sessions completed/lost, admission results,
 CPU, peak RSS, network use, deployment duration, and operator steps.
 
 The decision states the smallest Railway region set within the entry-level
-budget, automatic worst-latency/median-latency placement, owning-process routing,
+budget, creator-region placement, owning-process routing,
 measured drain deadline, rollback procedure, headroom/uncertainty, rejected
 alternatives, and the smallest workload that would invalidate it.
 
@@ -205,9 +187,9 @@ interval plus the frozen calibrated tolerance, within the frozen missed-refresh
 budget, with no unexplained update backlog, no silently dropped logical update,
 and no frame above `100 ms`.
 
-Frozen `world`, `story`, and `combat` traces run at both required
-resolutions after warmup for at least `10 minutes`, with `5` independent
-runs per OS/resolution/scene. Report presentation and update distributions
+Frozen `world`, `story`, and `combat` traces run at `1920x1080` after warmup
+for at least `10 minutes`, with `3` independent runs per OS/scene. `1280x720`
+gets one smoke run per OS/scene. Report presentation and update distributions
 separately. Exercise the fixed-update catch-up/drop policy in its own
 correctness workload rather than mixing a forced stall into normal frame data.
 

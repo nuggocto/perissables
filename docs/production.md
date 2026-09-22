@@ -2,7 +2,6 @@
 
 Status: Planning inventory
 Owner: Sole developer
-Updated: 2026-08-16
 
 Product requirements and release counts belong to `docs/mvp-contract.md`. This
 file tracks how approved scope becomes finished screens, content, assets, and
@@ -41,8 +40,8 @@ specification here.
 | Music and ambience | Ogg Vorbis; local playback from semantic cues | Four tracks and two ambience loops | Owner, credited friends, purchased sources if used | Planned |
 | SFX | Signed 16-bit PCM WAV; mono/stereo `48 kHz` | At least twenty | Owner, credited friends, purchased sources if used | Planned |
 | Voice | Not in MVP | None | None | Cut |
-| Fonts and text | `en`, `fr`, `zh-Hans`, `zh-Hant`, `ja`, `ko`, `de`, `es`, `th` | One packaged fallback set and nine reviewed locales | Owner, fluent credited friends, licensed fonts | Planned |
-| Steam store media | Capsule art, screenshots, trailer, copy | One approved set localized for nine locales | Owner and credited friends | Planned |
+| Fonts and text | `en`, `fr` | One packaged fallback set; English plus reviewed French | Owner, fluent credited friend, licensed fonts | Planned |
+| Steam store media | Capsule art, screenshots, trailer, copy | Coming Soon set after Phase 06; final set in English and French | Owner and credited friends | Planned |
 
 Remaining `TBD` values are locked before production work in that area is
 estimated or accepted.
@@ -60,8 +59,9 @@ estimated or accepted.
 - Prefer reproducible command-line exports when the source tool supports them.
   Otherwise record the manual export steps and review the resulting checksum.
 - Keep temporary, source-tool, and unlicensed files out of release packages.
-- The approved font set must render all nine launch locales, French diacritics
-  in the title, keyboard prompts, and fallback glyphs without network access.
+- The approved font set must render English and French, including French
+  diacritics in the title, keyboard prompts, and fallback glyphs, without
+  network access.
 
 ## Acceptance
 
@@ -89,8 +89,10 @@ numeric fun score before baseline evidence exists.
 
 ## Non-code release inventory
 
-Phase 12 prepares and assigns owners for Steam app/store access, capsule art,
-screenshots, trailer, store copy, age/content disclosures, launch languages,
-pricing proposal, privacy/support contacts, incident handling, server cost,
-shutdown policy, and the public marketing site (`docs/site.md`). Phase 13 approves and publishes the final set against the exact
-release artifacts.
+The Steamworks parallel track secures app access early. After Phase 06, a
+first Steam "Coming Soon" page and the public site (`docs/site.md`) go live
+with real screenshots so wishlists can accumulate. Phase 12 prepares and assigns
+owners for final capsule art, screenshots, trailer, store copy, age/content
+disclosures, launch languages, pricing proposal, privacy/support contacts,
+incident handling, server cost, and shutdown policy. Phase 13 approves and
+publishes the final set against the exact release artifacts.

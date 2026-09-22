@@ -21,6 +21,15 @@ The server owns:
 The client owns rendering, input collection, local UI/presentation state, and
 audio playback after an authoritative event.
 
+## Movement Presentation
+
+The server simulates at `20 Hz`; the client renders at `60 FPS`. The client
+predicts its own character from local input and reconciles to each
+authoritative position, replaying unacknowledged inputs. Remote characters are
+interpolated between authoritative snapshots with a small fixed render delay.
+Prediction never triggers interactions, story events, or collision outcomes.
+Phase 03 implements this and Phase 10 measures how it feels across regions.
+
 ## Early Vertical Slice
 
 Phase 02 proves the complete path before broad gameplay:
@@ -43,14 +52,20 @@ path; it is not migrated from client authority.
 
 WebSockets fit the small co-op update model and the `axum`/`tokio` server.
 Production uses WSS through trusted environment endpoints. Steam lobby metadata
-contains discovery/compatibility data, never arbitrary endpoints or authority.
+contains discovery/compatibility data and the session's region ID from the
+trusted allowlist, never arbitrary endpoints or authority.
+
+At session creation, the creator's client probes the trusted region endpoints
+and creates the session in the lowest-latency region. Joiners and rejoiners read
+the region ID from the Steam lobby and connect to that region. Sessions never
+migrate between regions or processes.
 
 JSON v1 prioritizes debuggability. Before admission, authentication,
 create/join, and rejoin use the pre-session envelope defined by the contract.
 After identity/seat binding, session messages add server-issued session/player
 IDs. Every envelope carries a type, protocol version, per-direction transport
-sequence, and typed payload. Gameplay inputs also carry persisted per-player
-order and a based-on revision.
+sequence, and typed payload. Gameplay inputs also carry a per-player
+order number retained across reconnect and a based-on revision.
 
 Protocol rules:
 
@@ -80,7 +95,8 @@ must know them.
 ## Identity
 
 Production create/join/rejoin validates a fresh Steam proof for the expected app
-and ownership. The server issues all session/player IDs.
+and ownership through the Steam Web API. The server issues all session/player
+IDs.
 
 - Joining an existing session also requires the contract's server-held join
   grant for the exact identity/session, authorized by the current connected
@@ -102,32 +118,15 @@ Steam staging is available. It cannot compile into release features/packages.
 
 ## Lifecycle And Recovery
 
-Steam lobbies are private or friends-only and invite-based; there is no public
-browser or matchmaking. New seats join only a lobby; reserved seats may rejoin a
-non-ended session.
-Disconnect preserves a seat through bounded grace. Explicit leave in any
-non-ended state or grace expiry releases it. The contract's departure table
-defines character/inventory removal, leader vacancy, last-player continuation,
-and wipe/end behavior. Rejoin at or after the grace deadline cannot reclaim the
-seat. A mismatched rejoin cannot evict an already-connected player.
-
-The session owner applies due seat expiries before vote closure and new input.
-Disconnect discards ballots; acknowledged rejoin permits fresh ballots only
-while the vote is open. Gameplay pauses when no living player is connected;
-absolute expiry and drain deadlines continue. Lifecycle changes and atomic story
-check resolution share the same serialized authority path.
-
-Session state exists only in the owning server process. Drain refuses new
-admission, grants, and run starts. Idle lobbies end immediately; active runs
-finish through summary and then end instead of returning to that process's lobby.
-Reserved-seat rejoin remains available for non-ended running/summary sessions.
-Summary and drain deadlines cannot be extended by reconnects, and cleanup never
-waits indefinitely for peers to disconnect.
-
-Idle/completed sessions receive the contract's maintenance notice. A drain
-deadline, process crash, or forced stop that interrupts a run uses the stable
-run-lost outcome. Regional routing must keep permitted rejoin traffic on the
-owning process while it lives; maintenance does not migrate session state.
+Session states, departures, pause/resume, grace and lifetime windows, and
+deployment drain are defined in the contract's
+[session lifecycle](mvp-contract.md#session-lifecycle) and
+[drain](mvp-contract.md#in-memory-sessions-and-draining) sections. In short:
+lobbies are private or friends-only and invite-based; disconnected seats are
+reserved through bounded grace; session state lives only in the owning process;
+drain refuses new admission and run starts, ends idle lobbies, and lets active
+runs finish through summary. Maintenance never migrates session state, so
+permitted rejoin traffic must reach the owning process while it lives.
 
 ## Slow And Failed Peers
 

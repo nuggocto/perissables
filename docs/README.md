@@ -9,7 +9,7 @@
    release deliverables.
 4. `docs/site.md` — public marketing website scope.
 5. `docs/architecture.md` and `docs/networking.md` — implementation shape.
-6. `docs/content-packs.md` — data/engine and repository boundaries.
+6. `docs/content.md` — built-in content data/engine boundary.
 7. `docs/test-strategy.md`, `docs/qa-plan.md`,
    `docs/security-model.md`, and `docs/benchmark-plan.md` — evidence.
 8. `docs/roadmap.md` and `docs/progress-tracker.md` — order and status.
@@ -27,17 +27,8 @@
 - `docs/progress-tracker.md` contains phase gates only. Active work belongs in
   issues or a project board.
 
-## Repository Boundaries
+## Repository
 
-These documents cover the `perissables` game/runtime repository and its
-game-facing integration contracts.
-
-| Repository | Status | URL/pin |
-| --- | --- | --- |
-| `perissables` | Current proprietary game/runtime, schema, built-in content, and assets | [GitHub](https://github.com/nuggocto/perissables) |
-
-The public website is a static marketing page owned by this repository
-(`docs/site.md`).
-
-Update this table in the same change that creates or repins a related
-repository. Do not claim an uncreated repository was reviewed.
+Everything — game/runtime, schema, built-in content, assets, and the static
+public website (`docs/site.md`) — lives in the proprietary
+[`perissables`](https://github.com/nuggocto/perissables) repository.

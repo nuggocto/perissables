@@ -25,21 +25,30 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 
 ## Phase 01 - Repository Bootstrap
 
-- [ ] Create the five-member Rust workspace with resolver 3, add the root
+- [ ] Create the six-member Rust workspace with resolver 3, add the root
   `rust-toolchain.toml`, and commit `Cargo.lock`.
 - [ ] Add minimal client/server entrypoints, shared logging, local `mise`
   pins for tools outside the Rust toolchain, local tasks, and the locked CI
   checks.
 - [ ] Pin reproducible Linux/Windows native dependency acquisition, select the
   exact Steam Linux Runtime/container, and compile both minimal targets.
-- [ ] Obtain Steamworks partner/app access, which is not currently available,
-  then compile disposable authentication plus lobby/invite API spikes on both
-  targets.
+- [ ] Compile disposable client authentication-ticket plus lobby/invite API
+  spikes on both targets against Steam's public test app; validate a ticket
+  from a server stub through the Steam Web API.
 - [ ] Check Railway availability and entry-level subscription limits for an
   initial Americas/Europe/Asia candidate topology.
+- [ ] Run the Railway drain spike: record whether a draining deployment still
+  receives new WebSocket connections, existing-socket behavior, and the maximum
+  draining time; revise the drain/rejoin contract first if it fails.
 - [ ] Keep the versioned built-in content schema and fixtures in this
   repository.
 - [ ] Phase 01 complete.
+
+## Parallel track - Steamworks access
+
+- [ ] Obtain Steamworks partner access and pay the app fee (needed before the
+  Phase 06 store-presence step and Phase 07; release requires `30` days after
+  the fee).
 
 ## Phase 02 - Early Authoritative Vertical Slice
 
@@ -60,8 +69,9 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 
 ## Phase 03 - World Runtime
 
-- [ ] Implement fixed client update/render loops and server-owned cardinal
-  movement.
+- [ ] Implement fixed client update/render loops, server-owned cardinal
+  movement, local-player prediction/reconciliation, and remote interpolation.
+- [ ] Load content through the `content` crate and externalize UI strings.
 - [ ] Load one TMX map with collision, bounds, camera, and interaction behavior.
 - [ ] Extend the authoritative transcript with movement and interaction
   boundary/error coverage.
@@ -75,8 +85,9 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
   and bounded transitions.
 - [ ] Freeze parser/resource ceilings from typical, large, limit, and rejected
   fixtures.
-- [ ] Pass abstention/default, discarded/replaced ballot, tie/deadline, and
-  story-check actor/wait/cancellation transcripts; validate vote defaults and
+- [ ] Pass abstention/default, discarded/replaced ballot, early close,
+  tie/deadline, dialogue advance, and story-check actor/wait/cancellation
+  transcripts; validate vote defaults and
   canonical identity/checksum fixtures.
 - [ ] Phase 04 complete.
 
@@ -87,7 +98,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 - [ ] Add deterministic public transcripts for legal, rejected, boundary, and
   rollback behavior.
 - [ ] Qualify bounded effect replacement, check-modifier consumption, item use
-  without rolls, full-inventory grants, and competing loot assignments.
+  without rolls, full-inventory grants, competing loot assignments, and the
+  round limit entering the wipe summary.
 - [ ] Remove every temporary debug character/action from release features.
 - [ ] Run a blind combat playtest outside the implementation team and record
   turn clarity, idle time, encounter length, rules questions, and desire to
@@ -102,7 +114,10 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
   keyboard-operable UI, settings, and fallback behavior.
 - [ ] Complete event-driven ambience, music, and SFX without voice.
 - [ ] Qualify leave/expiry in each session state, vacant leadership, pause/resume,
-  last-player continuation, wipe/end precedence, and two-player minimum on reset.
+  last-player continuation, wipe/end precedence, two-player minimum on reset,
+  the `2 minute` summary timeout, and the lifetime-window reset on `Lobby`.
+- [ ] Publish the Steam "Coming Soon" page and the public site with real
+  screenshots.
 - [ ] Run the first complete story as a blind playtest and resolve blockers in
   comprehension, party downtime, run length, or willingness to replay.
 - [ ] Phase 06 complete.
@@ -133,8 +148,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
   dialogue/choice beats.
 - [ ] Complete four music tracks, two ambience loops, and at least twenty SFX.
 - [ ] Record written rights/provenance for assets produced by the owner and
-  credited friends plus any purchased sources; complete fluent
-  collaborator-reviewed text for all nine launch locales.
+  credited friends plus any purchased sources; complete English text and
+  fluent collaborator-reviewed French text.
 - [ ] Phase 08 complete.
 
 ## Phase 09 - Playable MVP Stabilization
@@ -149,8 +164,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 
 - [ ] Freeze representative regional latency, full-run, reconnect, drain,
   forced-stop, and rollback workloads from the implemented game.
-- [ ] Measure candidate Railway regions, automatic worst-latency
-  player-to-session placement, and owning-process routing on production-shaped
+- [ ] Measure candidate Railway regions, creator-region session placement,
+  and owning-process routing on production-shaped
   infrastructure; freeze acceptable cross-area latency with controlled
   impairment playtests.
 - [ ] Record latency by source/host region, drain duration, sessions
@@ -158,7 +173,7 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 - [ ] Prove idle-lobby closure, rejected run starts, summary-to-end transitions,
   and natural drain with connected clients under absolute summary/drain deadlines.
 - [ ] Freeze the smallest Railway-only region set within the entry-level budget,
-  automatic worst-latency placement/rejoin routing, drain deadline, run-lost
+  creator-region placement/rejoin routing, drain deadline, run-lost
   behavior, and rollback procedure.
 - [ ] Phase 10 complete.
 
@@ -177,8 +192,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 
 - [ ] Freeze the reference client machine, staging shape, benchmark workloads,
   timer/driver noise floor, and practical release gates.
-- [ ] Freeze the artifact matrix, authorized-account small-load checks, and
-  production/capacity build-equivalence tolerance from `docs/benchmark-plan.md`.
+- [ ] Freeze the artifact matrix and authorized-account small-load checks from
+  `docs/benchmark-plan.md`.
 - [ ] Complete consented playtests and report onboarding/run timing with
   abandonment and uncertainty.
 - [ ] Run the pre-release QA matrix and calibrated client/server benchmarks on
@@ -199,16 +214,16 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 - [ ] Rerun final QA, client frame gates, and bounded server performance/lifecycle
   checks against exact production digests using the authorized Steam account pool.
 - [ ] Rerun capacity gates on the separate production-profile adapter build from
-  the same final revision; record both digests, permitted build differences,
-  production adapter-absence proof, and a passing artifact-pairing verdict.
+  the same final revision; record both digests, the differences note, and
+  production adapter-absence proof.
 - [ ] Approve and publish store materials, age/content disclosures, pricing,
   launch languages, end-user terms, privacy/support contacts, third-party
-  notices, contribution-policy decision, asset provenance, and the operating
-  plan.
+  notices, contribution-policy decision, asset provenance, the final public
+  site content, and the operating plan.
 - [ ] Phase 13 complete: Release-ready.
 
 ## Post-MVP
 
 Track additional themes/UI, voice, durable active runs, normal solo play,
-achievements, and additional platforms in separate post-MVP backlogs. They are
+achievements, additional locales, and additional platforms in separate post-MVP backlogs. They are
 not Phase 01-13 completion gates.

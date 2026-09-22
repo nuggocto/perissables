@@ -3,9 +3,9 @@
 ## Planning Rule
 
 This roadmap is an execution order, not a calendar promise. For one developer,
-the previous `4-8 month` release range remains an aspirational hypothesis until
-the Phase 02 authoritative slice, native target builds, Steam access, and Phase
-10 regional deployment decision have produced evidence.
+a `4-8 month` release range remains an aspirational hypothesis until the Phase
+02 authoritative slice, native target builds, the Phase 01 Railway drain spike,
+and the Phase 10 regional deployment decision have produced evidence.
 
 Re-estimate after each of those gates. A failed feasibility gate changes the
 plan before dependent implementation begins; it does not get hidden inside a
@@ -32,7 +32,7 @@ detail labeled final before its evidence gate.
 
 ### Phase 01 - Repository Bootstrap
 
-Create the five-member Rust workspace, add the root pinned toolchain, commit the
+Create the six-member Rust workspace, add the root pinned toolchain, commit the
 lockfile, and add minimal client/server entrypoints, logging, CI, legal baseline,
 and local development tasks. Keep Rust owned by `rust-toolchain.toml`; use
 `mise` only for tools outside the Rust toolchain and local task aliases. Keep the
@@ -43,15 +43,29 @@ Run only bootstrap-relevant feasibility checks:
 - Linux and Windows native dependencies can be acquired reproducibly.
 - The exact Steam Linux Runtime/container is selected and pinned.
 - Both targets compile minimal client/server shells.
-- Steamworks partner/app access is obtained, and minimal authentication plus
-  lobby/invite APIs compile on both targets in a disposable spike.
+- Minimal client authentication-ticket plus lobby/invite APIs compile on both
+  targets in a disposable spike against Steam's public test app, and a server
+  stub validates a ticket through the Steam Web API.
 - Railway availability and entry-level subscription limits are checked for an
   initial Americas/Europe/Asia candidate topology; nearby worldwide latency is
   measured later rather than requiring a physical deployment in every area.
+- Railway drain spike: deploy a tiny WebSocket server, trigger a replacement
+  deployment, and record whether new connections can still reach the draining
+  process, how existing WebSockets behave, and the maximum
+  `RAILWAY_DEPLOYMENT_DRAINING_SECONDS`. If a draining process cannot receive
+  rejoins or cannot outlive a full run plus summary, revise the drain and
+  rejoin contract before Phase 02.
 - CI can run the locked Rust checks.
 
 Large Steam account pools, production integration, production signing, and
 regional deployment are later gates owned by the phases that need them.
+
+### Parallel track - Steamworks access
+
+Obtain Steamworks partner access and pay the app fee for Les Périssables. This
+is administrative work, not a Phase 01 exit condition, but it must finish
+before the Phase 06 store-presence step and before Phase 07 needs the real app
+ID. Steam requires `30` days between the app fee and release.
 
 ### Phase 02 - Early Authoritative Vertical Slice
 
@@ -78,8 +92,9 @@ feedback for Phase 05.
 ### Phase 03 - World Runtime
 
 Implement fixed-timestep client presentation, server-owned cardinal movement,
-TMX loading/collision, camera behavior, interactions, and the minimal audio
-event path. Extend the Phase 02 transcript rather than creating a separate
+local-player prediction with reconciliation, remote-character interpolation,
+TMX loading/collision through the `content` crate, camera behavior,
+interactions, externalized UI strings, and the minimal audio event path. Extend the Phase 02 transcript rather than creating a separate
 single-player rules path.
 
 ### Phase 04 - Story Schema And Runtime
@@ -88,8 +103,8 @@ Implement the internal built-in schema v1, strict validation, and a declarative
 story state machine. Add branching, choices, checks, effects, encounters, and
 return/end transitions. Freeze exact parser/resource ceilings with repository
 conformance fixtures, not before they exist.
-Require the contract's abstention, ballot-discard, deadline, and story-check actor
-transcripts before exit. Content validation rejects missing/invalid vote defaults.
+Require the contract's abstention, ballot-discard, early-close, deadline,
+dialogue-advance, and story-check actor transcripts before exit. Content validation rejects missing/invalid vote defaults.
 
 ### Phase 05 - Combat, Characters, Death, And Loot
 
@@ -100,7 +115,8 @@ playtest with people outside implementation and record turn clarity, idle time,
 encounter length, rules questions, and desire to replay before locking the
 combat loop.
 The exit transcripts also cover guard/modifier replacement, item use without
-rolls, full-inventory grants, and loot recipient changes at closure.
+rolls, full-inventory grants, loot recipient changes at closure, and the combat
+round limit entering the wipe summary.
 
 ### Phase 06 - Complete Run Loop And Presentation
 
@@ -110,7 +126,12 @@ assets, music/SFX channels, and three-run reset coverage. Run the first complete
 story as a blind playtest and resolve any blocker in comprehension, party
 downtime, run length, or willingness to replay before exit.
 Complete departure/expiry transitions, empty-candidate leadership, pause/resume,
-and last-player continuation with injected-time state-machine tests.
+last-player continuation, the summary timeout, and the lifetime-window reset
+with injected-time state-machine tests.
+
+Store presence: once real screenshots exist, publish the Steam "Coming Soon"
+page and the public site (`docs/site.md`) with wishlisting. Final store
+materials are still approved in Phases 12-13.
 
 ### Phase 07 - Multiplayer And Identity Hardening
 
@@ -135,8 +156,8 @@ area, four playable characters, five normal enemy types, one mandatory boss,
 eight spells, eight items, the required encounters/checks/choices/dialogue,
 four music tracks, two ambience loops, and at least twenty SFX. Integrate the
 assets produced by the owner and credited friends, plus any purchased sources,
-with written rights/provenance. Produce fluent collaborator-reviewed text for
-all nine launch locales.
+with written rights/provenance. Produce English text and fluent
+collaborator-reviewed French text.
 
 ### Phase 09 - Playable MVP Stabilization
 
@@ -146,16 +167,16 @@ tests. Resolve blocker/critical defects before declaring Playable MVP.
 
 ### Phase 10 - Regional deployment and drain decision
 
-Measure candidate Railway regions, automatic worst-latency player-to-session
-placement, owning-process rejoin routing, graceful drain, forced stop, regional
+Measure candidate Railway regions, creator-region session placement,
+owning-process rejoin routing, graceful drain, forced stop, regional
 loss, and rollback using the implemented game workload. Freeze acceptable
 cross-area latency from controlled impairment playtests before choosing the
 smallest region set.
 
 Publish one decision record containing:
 
-- the smallest Railway-only region set within the entry-level budget and its
-  automatic worst-latency placement policy;
+- the smallest Railway-only region set within the entry-level budget and the
+  creator-region placement behavior;
 - cross-region latency and uncertainty;
 - owning-process session/rejoin routing;
 - measured drain deadline and proof of the contract's admission/run-start
@@ -164,7 +185,7 @@ Publish one decision record containing:
 - deployment and rollback procedure; and
 - rejected alternatives with measured reasons.
 
-The record must demonstrate the actual party-placement and owning-process routing
+The record must demonstrate the actual session placement and owning-process routing
 mechanism through reconnect and deployment replacement. A generic regional
 endpoint or readiness flag is not evidence of session affinity. Keep this a
 measured feasibility gate before Phase 11 implementation.
@@ -185,8 +206,8 @@ Provision production-equivalent staging. Run consented playtests, the release
 QA matrix, calibrated client measurements, server capacity/load experiments,
 regional drain/boundary workloads, and profiling of measured bottlenecks. Freeze release
 budgets only after the reference environment and noise floor are recorded.
-Freeze the production/capacity artifact matrix, small authorized-account workload,
-and build-equivalence tolerance from `docs/benchmark-plan.md`.
+Freeze the production/capacity artifact matrix and small authorized-account
+workload from `docs/benchmark-plan.md`.
 
 Prepare and assign owners for Steam store copy and media, age/content
 disclosures, launch languages, pricing, privacy/support contacts, incident
@@ -199,15 +220,15 @@ the Phase 07 Steam lobby/invite flow against final depots, deploy the production
 server, drill rollback, and rerun release QA, client frame gates, and bounded server
 performance/lifecycle checks against exact production digests. Rerun capacity
 gates on the separately identified production-profile capacity build from the
-same final revision. Require both evidence sets and the artifact-pairing verdict
+same final revision. Require both evidence sets and the differences note
 defined in `docs/benchmark-plan.md`. Approve and publish the store materials,
 disclosures, end-user terms, privacy/support contacts, third-party notices,
-asset provenance, and operating plan.
+asset provenance, final public site content, and operating plan.
 
 ## Post-MVP Boundary
 
-Additional themes/UI, voice, durable active runs, and normal solo play belong to
-post-MVP plans.
+Additional themes/UI, voice, durable active runs, normal solo play, and launch
+locales beyond English and French belong to post-MVP plans.
 
 ## Definition Of Done
 

@@ -3,9 +3,8 @@
 A stupid, fun, multiplayer tabletop RPG where players pick premade food characters,
 run story-driven adventures, and survive dice/combat events together.
 
-The canonical game repository slug is `perissables`; Rust packages use the
-`les-perissables` prefix. Platform-specific user-data paths are locked separately
-in `docs/mvp-contract.md`.
+The repository slug is `perissables`; Rust packages use the
+`les-perissables-` prefix.
 
 ## Documentation
 

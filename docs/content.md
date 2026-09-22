@@ -69,8 +69,10 @@ fixtures, so this document cannot become a second schema.
 
 ## Validation ownership
 
-`game_core` owns the built-in content DTOs and pure validation. The repository
-owns canonical examples plus accepted and rejected fixtures. Startup validates
+The `content` crate owns the built-in content DTOs, loading from bytes, pure
+validation, and the canonical checksum, so the client and server share one
+schema. `game_core` consumes validated content and owns the rules. The
+repository owns canonical examples plus accepted and rejected fixtures. Startup validates
 the immutable built-in aggregate before admitting a session.
 
 Schema validation:

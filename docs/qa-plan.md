@@ -2,7 +2,6 @@
 
 Status: Normative release-behavior policy
 Owner: Sole developer
-Updated: 2026-09-12
 
 QA exercises the product through a supported shipped entrypoint. Internal state
 machines, parser matrices, and process-lifecycle fault injection belong to
@@ -20,7 +19,7 @@ automated tests. QA observes user-visible consequences and session effects.
 - `INCONCLUSIVE`: evidence is ambiguous, contradictory, or intermittent.
 
 Every report also recommends `ship`, `hold`, or `no recommendation`.
-Release-ready requires final `PASS`; the release owner records the decision.
+Release-ready requires final `PASS`, recorded in the Phase 13 evidence.
 
 ## Evidence
 
@@ -60,13 +59,14 @@ added to the support contract.
    the displayed timeout choice when everyone abstains, check-actor attribution,
    effect replacement, item consumption, and full-inventory reward feedback.
 3. **Presentation and accessibility.** Exercise the supermarket presentation
-   and single scalable UI at required resolutions/scales in all nine launch
-   locales, with keyboard-only navigation, visible focus, correct wrapping/font
+   and single scalable UI at required resolutions/scales in English and French,
+   with keyboard-only navigation, visible focus, correct wrapping/font
    fallback, independent audio channels, and presentation fallbacks.
 4. **Hosted convergence.** Complete deterministic 2-, 3-, and 4-player staging
    runs through private/friends Steam invites, including owner handoff and
-   successful owner-authorized game admission; verify automatic worst-latency
-   Railway region selection for same-area and cross-area parties, observe stable
+   successful owner-authorized game admission; verify the session is created in
+   the creator's lowest-latency Railway region and that far joiners reach it
+   through the lobby's region ID, observe stable
    fifth-seat and server-capacity refusal without affecting admitted players,
    and confirm no public lobby browser or matchmaking is exposed.
 5. **Reconnect.** Disconnect or terminate the client during world, story, and
@@ -82,8 +82,9 @@ added to the support contract.
    start, and an active run finishes through summary before its session closes.
    Reserved-seat rejoin works for non-ended running/summary sessions. An idle or
    completed session must not show run loss; interrupted runs use the stable
-   run-lost outcome with no false recovery claim. Deadline interleavings and
-   internal cleanup assertions belong to process-lifecycle tests.
+   run-lost outcome with no false recovery claim. Expected transitions are the
+   contract's drain table; deadline interleavings and internal cleanup
+   assertions belong to process-lifecycle tests.
 7. **Trust boundaries.** Observe invalid/expired Steam proof and compatibility
    failures through supported connection flows. Wrong protocol shows
    `update_required`; a valid unequal content identity shows `content_mismatch`
@@ -108,10 +109,8 @@ environments are separate diagnostic artifacts with their own digest.
   complete, and becomes false before graceful drain.
 - Capacity exhaustion rejects new admission but does not make healthy existing
   sessions or reserved-seat rejoin unready.
-- Shutdown stops admission and run starts, ends idle lobbies and completed
-  summaries, and permits reserved-seat rejoin only to non-ended running/summary
-  sessions. It awaits bounded owned work without requiring clients to leave and
-  distinguishes maintenance closure from an interrupted run.
+- Shutdown follows [the contract's drain rules](mvp-contract.md#in-memory-sessions-and-draining)
+  and distinguishes maintenance closure from an interrupted run.
 - Public errors are stable and redacted; internal logs retain useful structured
   context without credentials or personal data.
 
@@ -129,6 +128,6 @@ pre-release report. Phase 13 reruns every applicable journey on exact final
 digests and is the only final Release-ready QA verdict.
 
 Synthetic capacity tests use a separate non-distributable server build and are
-not final-package QA. Release evidence pairs both builds using the artifact
-matrix in `docs/benchmark-plan.md`; the production digest always uses real Steam
-authentication with the authorized account pool.
+not final-package QA. See the artifact matrix in `docs/benchmark-plan.md`; the
+production digest always uses real Steam authentication with the authorized
+account pool.

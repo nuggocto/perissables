@@ -19,7 +19,10 @@ Sections:
 
 - Static HTML/CSS built from repository-owned sources; no application server and
   no database.
-- Changelog and news are Markdown files in this repository, published by the
-  same release process that ships the game build.
-- Content stays consistent with the Steam store copy approved in Phase 12.
+- Changelog and news are Markdown files in this repository. Changelog entries
+  publish with each game release; news posts can publish at any time, including
+  before launch.
+- The site goes live with the Steam "Coming Soon" page after Phase 06 and is
+  finalized in Phase 13.
+- Content stays consistent with the current Steam store copy.
 - The site never talks to the game server and is never required for gameplay.

@@ -2,7 +2,6 @@
 
 Status: Ready for Phase 01 implementation
 Owner: Sole developer
-Updated: 2026-09-12
 
 This document is the source of truth for product, authority, compatibility, and
 release requirements. It intentionally does not pre-design every queue, storage
@@ -63,6 +62,7 @@ dice/combat events through one authoritative server.
 - Procedural maps, voice chat, voice barks, scripting, or arbitrary content
   code.
 - Additional themes and UI skins/variants.
+- Launch locales beyond English and French.
 - Mobile, browser, console, or macOS releases.
 - Public lobby browsing, matchmaking, mid-run kicking, or Steam achievements.
 - Durable recovery of an active run after a server process crash.
@@ -114,6 +114,10 @@ randomness. Tests use fixed known states, not frequency assertions.
 
 - Exploration uses continuous cardinal movement without diagonal movement.
 - The server owns movement speed, collision, and final position.
+- The client predicts its own character's movement from local input and
+  reconciles to each authoritative position; remote characters are interpolated
+  between authoritative snapshots. Prediction is presentation only: it never
+  triggers interactions, story events, or collision outcomes.
 - An interaction targets the valid object directly in front of the character
   within one tile.
 
@@ -133,6 +137,10 @@ randomness. Tests use fixed known states, not frequency assertions.
   randomness or modifiers and retries when a living player reconnects. Run
   termination cancels the pending node. A disconnect processed before resolution
   excludes that actor; one processed afterward cannot change the result.
+- A dialogue node advances when every connected living player has pressed
+  continue, or after `20 seconds` of unpaused gameplay time. Continue presses
+  are per-node, are not ballots, and are discarded on disconnect. Dead
+  spectators do not block or advance dialogue.
 - Effects are limited to flag and item operations supported by the engine.
 - At run start, the server uses the run CSPRNG to choose one leader uniformly
   from the occupied party.
@@ -142,9 +150,11 @@ randomness. Tests use fixed known states, not frequency assertions.
 - Each story vote declares one `default_choice_id`, shown as the timeout choice.
   Validation requires a nonempty choice set containing that default. Offered
   choices and the default remain fixed while the vote is open.
-- A vote remains open for `45 seconds` of unpaused gameplay time. At closure,
-  count only ballots from currently connected living players for valid choices.
-  Votes consume no randomness. Resolve according to this table:
+- A vote remains open for `45 seconds` of unpaused gameplay time, or closes
+  early as soon as every connected living player holds a ballot. Ballots remain
+  replaceable until closure. At closure, count only ballots from currently
+  connected living players for valid choices. Votes consume no randomness.
+  Resolve according to this table:
 
 | Ballots at closure | Outcome |
 | --- | --- |
@@ -238,7 +248,8 @@ randomness. Tests use fixed known states, not frequency assertions.
   the living party; no world-distance or combat-position test applies. For each
   item, connected living players cast one replaceable vote for an eligible
   living recipient with a free slot. The leader tie rule and lexical fallback
-  apply. An unassigned item disappears when the `45 second` loot vote closes.
+  apply. An unassigned item disappears when the loot vote closes, at `45 seconds`
+  or early under the same all-ballots rule as story votes.
 - Loot uses the ballot eligibility and timeout table above, with no default
   recipient. Recipient eligibility is checked again at closure. Concurrent loot
   votes resolve in lexical corpse ID, then corpse loot-slot order; each corpse's
@@ -246,8 +257,10 @@ randomness. Tests use fixed known states, not frequency assertions.
   Each assignment commits before the next vote checks free slots. Invalid
   recipient ballots are discarded, then the remaining ballots are tallied.
 - A player combat turn lasts `30 seconds`, then becomes an authoritative pass.
-- Combat ends on enemy defeat, party wipe, or a bounded engine limit. Invalid
-  actions do not mutate gameplay state, consume randomness, or consume a turn.
+- Combat ends on enemy defeat, party wipe, or a bounded engine round limit.
+  Reaching the round limit is a party loss that enters the wipe summary, in
+  normal and boss encounters alike. Invalid actions do not mutate gameplay
+  state, consume randomness, or consume a turn.
 
 ## Runtime Targets And Safety Budgets
 
@@ -283,12 +296,18 @@ Initial latency goal under the frozen Phase 12 workload:
 Players may connect worldwide through Railway. Physical deployment in every
 geographic area is not required; nearby measured latency is the requirement. A
 party may span areas, but one server process in one region owns its in-memory
-session. Region selection automatically minimizes the party's worst measured
-latency, then median latency, then lexical region ID. Phase 10 tests an initial
-Americas/Europe/Asia topology and freezes the smallest Railway-only deployment
-that provides acceptable play within the entry-level subscription budget.
-Additional Railway regions follow observed player demand rather than launching
-speculatively.
+session for its whole life; sessions never move between regions or processes.
+
+Region selection happens once, at session creation, from the creator's
+perspective: the creator's client probes the trusted region endpoints and
+creates the session in the region with the lowest measured latency, then lexical
+region ID. The Steam lobby carries that region's ID from the trusted allowlist,
+never an endpoint; joining and rejoining clients connect to that region.
+Joiners far from the creator accept the higher latency. Phase 10 tests an
+initial Americas/Europe/Asia topology and freezes the smallest Railway-only
+deployment that provides acceptable play within the entry-level subscription
+budget. Additional Railway regions follow observed player demand rather than
+launching speculatively.
 
 Client frame gates are calibrated on the named reference machine before
 candidate measurement. They require the 60 FPS target, a predeclared missed
@@ -316,14 +335,17 @@ local task aliases. Initial members are exactly:
 - `les-perissables-client`
 - `les-perissables-server`
 - `les-perissables-game-core`
+- `les-perissables-content`
 - `les-perissables-shared`
 - `les-perissables-integration-tests`
 
-`shared` owns protocol DTOs and IDs. `game_core` depends on `shared` and owns
-pure built-in content validation. The server depends on `shared` and `game_core`;
-the client depends on `shared` only and renders authoritative views without
-linking gameplay rules. Integration tests may depend on every member. Cycles and
-reverse dependencies are forbidden.
+`shared` owns protocol DTOs and IDs. `content` owns built-in content DTOs,
+JSON/TMX loading from bytes, pure validation, and the canonical checksum; it
+contains no gameplay rules. `game_core` depends on `shared` and `content`. The
+server depends on `shared`, `content`, and `game_core`. The client depends on
+`shared` and `content` to render the map, text, and assets, and does not link
+`game_core` or gameplay rules. Integration tests may depend on every member.
+Cycles and reverse dependencies are forbidden.
 
 ### Authority From The First Slice
 
@@ -403,13 +425,18 @@ Initial wire safety ceilings:
 ### Identity And Rejoin
 
 - Production create/join/rejoin requires a fresh Steam ticket validated for the
-  expected app and ownership before authority is granted.
+  expected app and ownership before authority is granted. The server validates
+  tickets through the Steam Web API over HTTPS and does not link the Steamworks
+  SDK. The publisher Web API key is an operator secret.
 - Tickets are never logged or persisted raw, and the client stores no rejoin
   bearer token locally.
 - A validated returning Steam identity may reclaim only its own reserved seat.
 - One player has at most one authoritative connection.
 - A disconnected seat remains reserved for an initial `10 minute` grace window,
-  bounded by an initial `4 hour` in-memory session lifetime.
+  bounded by an initial `4 hour` session lifetime window. The window restarts
+  each time the session enters `Lobby` (creation and every return from
+  summary), so repeated runs are not cut short; it still bounds idle lobbies and
+  stuck runs.
 - Rejoin receives a recipient-specific resync and acknowledges it before new
   gameplay input is accepted.
 - Production connections use the trusted environment endpoint allowlist with
@@ -469,7 +496,8 @@ States are `Lobby`, `Running`, `Summary`, and `Ended`.
   unique characters, and a process that is not draining. Membership or
   character-selection changes clear readiness.
 - Run completion or wipe enters summary.
-- Acknowledgement or bounded timeout returns remaining seats to a cleared lobby,
+- Acknowledgement by every remaining seat, or the `2 minute` summary timeout,
+  returns remaining seats to a cleared lobby,
   except during drain, when the session enters `Ended` as specified below.
 - Empty/expired sessions end and release capacity.
 - Combat turns and story/loot votes have monotonic deadlines. When no living
@@ -584,16 +612,15 @@ build before release.
 
 ## Presentation And Local Settings
 
-English is the source and fallback language. Launch locales are English (`en`),
-French (`fr`), Simplified Chinese (`zh-Hans`), Traditional Chinese (`zh-Hant`),
-Japanese (`ja`), Korean (`ko`), German (`de`), international Spanish (`es`), and
-Thai (`th`).
+English is the source and fallback language. Launch locales are English (`en`)
+and French (`fr`). Further locales are post-MVP; scripts that need complex
+shaping or dictionary line breaking (for example Thai) or large glyph atlases
+(CJK) require their own text-rendering spike before they are accepted.
 
-- Every player-facing string is externalized and supports Unicode, wrapping,
-  locale-appropriate line breaking, and packaged font fallback without network
-  access.
-- Release text and store copy receive review from fluent credited collaborators
-  in every non-English launch locale.
+- Every player-facing string is externalized from the first UI work and supports
+  Unicode, word wrapping, and packaged font fallback without network access.
+- Release text and store copy receive review from a fluent credited
+  collaborator in French.
 - The single UI and supermarket presentation never control authority,
   collision, or events.
 - Built-in assets that fail at presentation time use bounded texture, SFX,
@@ -656,14 +683,15 @@ Minimum CI after bootstrap:
 cargo fmt --all -- --check
 CARGO_BUILD_WARNINGS=deny cargo clippy --locked --all-targets --all-features
 cargo test --locked --all-features
-cargo test --locked --doc --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features
-cargo audit --file Cargo.lock
 cargo deny check
 ```
 
-If features become mutually exclusive, replace `--all-features` with the
-documented supported matrix.
+`cargo test` already runs doc-tests, and `cargo deny check` covers RustSec
+advisories, so no separate doc-test or `cargo audit` step is needed. If features
+become mutually exclusive, replace `--all-features` with the documented
+supported matrix. From Phase 02, CI also builds the release feature set and
+proves the local and benchmark identity adapters are absent from it.
 
 Release builds are reproducible from pinned inputs, Windows artifacts are signed
 through a protected non-exportable workflow, and Linux artifacts publish
@@ -688,9 +716,10 @@ Phase 13 release candidates exist.
   isolated synthetic identity adapter. Exact production artifacts exclude that
   adapter and undergo real Steam authentication, release QA, client performance,
   and bounded server performance/lifecycle checks with authorized accounts.
-  Phase 13 requires both sets of evidence, paired by final source revision and
-  the build-equivalence rules in `docs/benchmark-plan.md`; synthetic capacity
-  results are never attributed to a production digest.
+  Phase 13 requires both sets of evidence, built from the same final source
+  revision with their differences recorded as described in
+  `docs/benchmark-plan.md`; synthetic capacity results are never attributed to
+  a production digest.
 - No test or benchmark retries until green, hides intermittent failures, or
   trades correctness for speed.
 
