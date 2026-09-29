@@ -12,15 +12,11 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 - [x] Product scope, non-goals, authority model, and milestones are clear.
 - [x] Documentation authority and repository boundaries are clear.
 - [x] Evidence-gated decisions are distinguished from locked contracts.
-- [x] Documentation review findings resolved in the
-  [contract](mvp-contract.md#locked-gameplay-rules) and
-  [release evidence rules](benchmark-plan.md#artifact-matrix-and-final-release-evidence): vote defaults and
-  eligibility, empty leadership and departure transitions, story-check actors,
-  effect/item resolution, content admission, and separate capacity-build evidence.
-  Implementation and validation remain unchecked in their owning phases below.
-- [x] Define [new-seat authorization](mvp-contract.md#new-seat-authorization)
-  and [terminal drain transitions](mvp-contract.md#in-memory-sessions-and-draining),
-  with acceptance cases and implementation gates below.
+- [x] Define gameplay, admission, lifetime, and drain rules in the
+  [contract](mvp-contract.md), with focused [acceptance cases](test-strategy.md#required-high-risk-coverage).
+- [x] Documentation audit corrections recorded: shared loot closure, owner-only
+  start, lifetime renewal, validation layers, support authority, QA verdicts,
+  and target-cadence performance gates. Implementation/evidence remain unchecked.
 - [x] Phase 00 complete.
 
 ## Phase 01 - Repository Bootstrap
@@ -31,15 +27,16 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
   pins for tools outside the Rust toolchain, local tasks, and the locked CI
   checks.
 - [ ] Pin reproducible Linux/Windows native dependency acquisition, select the
-  exact Steam Linux Runtime/container, and compile both minimal targets.
+  exact Steam Linux Runtime/container and minimum host baseline, and compile
+  both minimal targets.
 - [ ] Compile disposable client authentication-ticket plus lobby/invite API
   spikes on both targets against Steam's public test app; validate a ticket
   from a server stub through the Steam Web API.
-- [ ] Check Railway availability and entry-level subscription limits for an
-  initial Americas/Europe/Asia candidate topology.
+- [ ] Record the approved numeric monthly hosting ceiling and cost assumptions;
+  check Railway plan/region availability for the candidate topology.
 - [ ] Run the Railway drain spike: record whether a draining deployment still
   receives new WebSocket connections, existing-socket behavior, and the maximum
-  draining time; revise the drain/rejoin contract first if it fails.
+  draining time; revise the drain/rejoin contract before Phase 02 if it fails.
 - [ ] Keep the versioned built-in content schema and fixtures in this
   repository.
 - [ ] Phase 01 complete.
@@ -57,6 +54,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 - [ ] One map interaction, dice check, legal combat action, and rejected action
   resolve on the server.
 - [ ] Both clients converge on the same summary revisions/events.
+- [ ] Prove owner-only start and exclusive party-wide interaction/frozen-world
+  behavior using a structurally valid partial aggregate and externalized UI.
 - [ ] Freeze content-identity admission DTOs and exact-match/mismatch fixtures;
   mismatches cannot allocate seats or disclose gameplay state.
 - [ ] Freeze join-grant DTOs/bounds; prove owner-only issuance, identity/session
@@ -80,7 +79,7 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 ## Phase 04 - Story Schema And Runtime
 
 - [ ] Implement built-in schema v1 and its strict repository-owned
-  validator/conformance corpus.
+  validator/conformance corpus, separate from release-completeness checks.
 - [ ] Implement declarative story nodes, choices, checks, effects, encounters,
   and bounded transitions.
 - [ ] Freeze parser/resource ceilings from typical, large, limit, and rejected
@@ -98,8 +97,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 - [ ] Add deterministic public transcripts for legal, rejected, boundary, and
   rollback behavior.
 - [ ] Qualify bounded effect replacement, check-modifier consumption, item use
-  without rolls, full-inventory grants, competing loot assignments, and the
-  round limit entering the wipe summary.
+  without rolls, full-inventory grants, shared loot closure/ordered assignments,
+  HP/death persistence, charge reset, and round-limit loss.
 - [ ] Remove every temporary debug character/action from release features.
 - [ ] Run a blind combat playtest outside the implementation team and record
   turn clarity, idle time, encounter length, rules questions, and desire to
@@ -115,9 +114,10 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 - [ ] Complete event-driven ambience, music, and SFX without voice.
 - [ ] Qualify leave/expiry in each session state, vacant leadership, pause/resume,
   last-player continuation, wipe/end precedence, two-player minimum on reset,
-  the `2 minute` summary timeout, and the lifetime-window reset on `Lobby`.
+  the absolute summary timeout, and lifetime renewal on lobby entry/valid start.
+- [ ] Pass near-expiry start, pause-boundary, and failed-settings-write transcripts.
 - [ ] Publish the Steam "Coming Soon" page and the public site with real
-  screenshots.
+  screenshots after the initial site publication checklist passes.
 - [ ] Run the first complete story as a blind playtest and resolve blockers in
   comprehension, party downtime, run length, or willingness to replay.
 - [ ] Phase 06 complete.
@@ -129,6 +129,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
   authorization before game admission, including owner handoff.
 - [ ] Reject direct uninvited joins and stale/wrong-principal grants with no
   seat allocation, gameplay disclosure, or reservation mutation.
+- [ ] Qualify ownership-sync failure, removed-member re-grant suppression,
+  real-provider ticket lifecycle/replay policy, and fail-closed provider errors.
 - [ ] Implement fresh-ticket reserved-seat reclaim, takeover, acknowledged
   resync, heartbeat, replay rejection, and stable public errors.
 - [ ] Qualify bounded rate, mailbox/writer, slow-client, and transport-chaos
@@ -141,12 +143,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 
 ## Phase 08 - Built-in content production
 
-- [ ] Complete one `35-45` minute story, one supermarket map with storage-room
-  area, four characters, five normal enemy types, and one mandatory boss.
-- [ ] Complete eight character spells, eight items, two normal encounters plus
-  the boss, four to six checks, three major choices, and `25-40` presented
-  dialogue/choice beats.
-- [ ] Complete four music tracks, two ambience loops, and at least twenty SFX.
+- [ ] Complete the [release inventory](mvp-contract.md#release-content-minimum)
+  and pass graph/transcript checks for supported surviving routes.
 - [ ] Record written rights/provenance for assets produced by the owner and
   credited friends plus any purchased sources; complete English text and
   fluent collaborator-reviewed French text.
@@ -172,7 +170,7 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
   completed/lost, deployment time, CPU/RSS/network, and operator steps.
 - [ ] Prove idle-lobby closure, rejected run starts, summary-to-end transitions,
   and natural drain with connected clients under absolute summary/drain deadlines.
-- [ ] Freeze the smallest Railway-only region set within the entry-level budget,
+- [ ] Freeze the smallest Railway-only region set within the approved hosting ceiling,
   creator-region placement/rejoin routing, drain deadline, run-lost
   behavior, and rollback procedure.
 - [ ] Phase 10 complete.
@@ -191,7 +189,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
 ## Phase 12 - Release QA, Balance, And Performance
 
 - [ ] Freeze the reference client machine, staging shape, benchmark workloads,
-  timer/driver noise floor, and practical release gates.
+  QA OS builds/UI scales, `60 Hz` reference mode, timer/driver noise floor, and
+  target-cadence release gates.
 - [ ] Freeze the artifact matrix and authorized-account small-load checks from
   `docs/benchmark-plan.md`.
 - [ ] Complete consented playtests and report onboarding/run timing with
@@ -213,6 +212,8 @@ links its relevant code, CI, test, QA, security, benchmark, or decision evidence
   production deployment, observability, and the rollback drill.
 - [ ] Rerun final QA, client frame gates, and bounded server performance/lifecycle
   checks against exact production digests using the authorized Steam account pool.
+- [ ] Record an eligible final QA verdict and explicit acceptance of any known
+  non-blocking issues; required journeys/criteria cannot be waived.
 - [ ] Rerun capacity gates on the separate production-profile adapter build from
   the same final revision; record both digests, the differences note, and
   production adapter-absence proof.

@@ -10,20 +10,10 @@ Stories, preset characters, enemies, items, and presentation references are data
 so the one release story can be edited without moving gameplay authority into
 content. Engine-owned rules remain fixed.
 
-One session uses one immutable aggregate content identity:
-
-- pack ID;
-- semantic version;
-- canonical SHA-256 checksum;
-- content schema version; and
-- game-rules version.
-
-The server loads the aggregate content from its release artifact.
-Clients declare the same five-field identity before create/join/rejoin. The
-contract requires exact equality, including the locale-independent aggregate
-checksum; compatible-looking SemVer or schema values cannot substitute for it.
-Phase 02 supplies admission fixtures and Phase 04 supplies canonical checksum
-fixtures. Content identity does not establish client trust.
+One session uses the immutable aggregate identity defined in
+[the content contract](mvp-contract.md#content-contract). Phase 02 supplies
+admission fixtures and Phase 04 supplies canonical checksum fixtures. Client and
+server share the schema; an identity match does not establish client trust.
 
 ## Data and engine boundary
 
@@ -45,35 +35,14 @@ Spells/items each reference one engine effect and one target type; assembling
 character kits does not create multi-effect action scripts. Guard and modifier
 replacement, item resolution, and full-inventory handling follow the contract.
 
-## Explanatory shape
-
-This snippet is intentionally incomplete and is not a conformance fixture:
-
-```json
-{
-  "content_schema_version": 1,
-  "id": "cleanup_on_aisle_9",
-  "title": "Cleanup on Aisle 9",
-  "theme_id": "supermarket",
-  "map_id": "aisle_9",
-  "estimated_minutes": 40,
-  "start_node": "intro_spill",
-  "nodes": [],
-  "encounters": [],
-  "triggers": []
-}
-```
-
-Complete accepted examples and exact bytes belong to the repository conformance
-fixtures, so this document cannot become a second schema.
-
 ## Validation ownership
 
 The `content` crate owns the built-in content DTOs, loading from bytes, pure
 validation, and the canonical checksum, so the client and server share one
 schema. `game_core` consumes validated content and owns the rules. The
-repository owns canonical examples plus accepted and rejected fixtures. Startup validates
-the immutable built-in aggregate before admitting a session.
+repository owns complete accepted examples and rejected fixtures, rather than
+maintaining a second schema in this document. Startup structurally validates the
+immutable built-in aggregate before admitting a session.
 
 Schema validation:
 
@@ -88,23 +57,35 @@ Schema validation:
 - rejects unreachable required nodes and non-terminating automatic chains;
 - disables TMX external entities, external resources, and parser network access;
   and
-- verifies the canonical content checksum and release-content minimum.
+- verifies the canonical content checksum.
 
 Exact ceilings freeze with typical, large, limit, and rejected fixtures.
 Released limits do not change silently.
 
+## Release completeness
+
+The [release minimum](mvp-contract.md#release-content-minimum) is a separate gate:
+
+- Inventory checks count the required characters, enemies, spells, items, maps,
+  localized text, and packaged audio/assets.
+- Graph checks and headless route transcripts verify presented encounters,
+  checks, choices, and dialogue, and that surviving routes cannot bypass the boss.
+  Record the exercised branches and conditions; one happy-path run is not proof
+  that every supported route meets its counts. Early wipes are not required to
+  present the remainder of the route.
+- Playtests measure actual run duration; `estimated_minutes` is authoring metadata.
+
+Partial development aggregates pass structural validation without passing release
+completeness. Phase 04 supplies fixtures distinguishing those outcomes; Phase 08
+completes the inventory/route gate, Phase 12 qualifies timing, and Phase 13 repeats
+the applicable checks on final packages.
+
 ## Map and asset direction
 
-The MVP uses one finite orthogonal TMX supermarket map with a storage-room area,
-`16x16` tiles, explicit collision/event objects, and no scripts or external
-resolution.
-
-Built-in presentation conventions:
-
-- four-direction `16x16` character frames;
-- Ogg Vorbis for music and ambience;
-- signed 16-bit PCM WAV for short SFX; and
-- mono/stereo `48 kHz` audio.
+Formats belong to [the contract](mvp-contract.md#map-and-asset-formats). Source
+maps embed tileset/collision data in TMX instead of leaving runtime TSX imports.
+Image references name validated packaged assets; they cannot cause parser file
+or network fetches. Phase 03 fixtures prove collision/event objects survive export.
 
 Presentation fallback never changes gameplay authority, collision, controls,
 focus, timing, or events.

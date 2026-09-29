@@ -1,6 +1,8 @@
 # Public website
 
-Authority: product boundaries come from `docs/mvp-contract.md`.
+Authority: product boundaries and publication prerequisites come from
+[the contract](mvp-contract.md#supported-platforms-and-public-website). This file
+owns page organization and the publication checklist, not new product scope.
 
 ## Scope
 
@@ -26,3 +28,18 @@ Sections:
   finalized in Phase 13.
 - Content stays consistent with the current Steam store copy.
 - The site never talks to the game server and is never required for gameplay.
+
+## First publication checklist
+
+Before the Phase 06 site or Steam "Coming Soon" page goes public:
+
+- Approve accurate copy, launch-language presentation, and media rights/credits.
+- Publish legal identification and working privacy/support contacts.
+- Record the selected static host and its actual logging/retention behavior;
+  publish a matching privacy notice. Prefer linked media; any embed or cookie
+  must be reflected in the notice and applicable consent behavior.
+- Check navigation, keyboard access, Steam links, and page readability on the
+  built site. The privacy/support information must be reachable.
+
+The site adds no analytics or tracking by default. Phase 13 updates and rechecks
+the published material against the release; approval is not deferred until then.

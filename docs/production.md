@@ -28,20 +28,22 @@ specification here.
 
 ## Inventory
 
-| Area | Known constraint | Release quantity | Owner/source | Status |
-| --- | --- | --- | --- | --- |
-| Stories and dialogue | One route; `35-45` minutes; `25-40` beats | One story | Owner and credited friends | Planned |
-| Maps and tilesets | One orthogonal TMX supermarket; `16x16` tiles | One map with storage-room area | Owner, credited friends, purchased sources if used | Planned |
-| Playable characters | Premade food characters; four-direction `16x16` frames | Four | Owner and credited friends | Planned |
-| Enemies and bosses | Random legal kit action/target; mandatory boss | Five normal types and one boss | Owner and credited friends | Planned |
-| Spells, items, effects | Engine-owned effect catalog | Eight spells, eight items, five effects | Project | Planned |
-| UI and icons | One scalable keyboard-operable UI | One complete set | Owner, credited friends, purchased sources if used | Planned |
-| Animation and VFX | Presentation only; no authority changes | TBD after wireframes | Owner and credited friends | Planned |
-| Music and ambience | Ogg Vorbis; local playback from semantic cues | Four tracks and two ambience loops | Owner, credited friends, purchased sources if used | Planned |
-| SFX | Signed 16-bit PCM WAV; mono/stereo `48 kHz` | At least twenty | Owner, credited friends, purchased sources if used | Planned |
-| Voice | Not in MVP | None | None | Cut |
-| Fonts and text | `en`, `fr` | One packaged fallback set; English plus reviewed French | Owner, fluent credited friend, licensed fonts | Planned |
-| Steam store media | Capsule art, screenshots, trailer, copy | Coming Soon set after Phase 06; final set in English and French | Owner and credited friends | Planned |
+Exact counts and formats live in the [release minimum](mvp-contract.md#release-content-minimum)
+and [asset contract](mvp-contract.md#map-and-asset-formats). This inventory tracks
+production responsibility rather than duplicating those values.
+
+| Area | Deliverable | Owner/source | Status |
+| --- | --- | --- | --- |
+| Stories and dialogue | Authored route and localized beats | Owner and credited friends | Planned |
+| Maps and tilesets | Supermarket and storage-room exports | Owner, credited friends, purchased sources if used | Planned |
+| Playable characters | Premade roster and directional frames | Owner and credited friends | Planned |
+| Enemies and boss | Kits, authored loot lists, and art | Owner and credited friends | Planned |
+| Spells, items, effects | Engine catalog and validated action data | Project | Planned |
+| UI and icons | Scalable keyboard-operable set | Owner, credited friends, purchased sources if used | Planned |
+| Animation and VFX | Presentation-only set; scope TBD after wireframes | Owner and credited friends | Planned |
+| Music, ambience, SFX | Approved runtime audio exports | Owner, credited friends, purchased sources if used | Planned |
+| Fonts and text | Packaged fallback fonts and reviewed launch locales | Owner, fluent credited friend, licensed fonts | Planned |
+| Steam store media | Capsule art, screenshots, trailer, copy; initial and final sets | Owner and credited friends | Planned |
 
 Remaining `TBD` values are locked before production work in that area is
 estimated or accepted.
@@ -77,8 +79,8 @@ An asset or content item is complete only when:
 
 ## Early playtest record
 
-Character names, HP/stat sheets, spell assignments, and the five normal-enemy
-plus boss kits remain Phase 05 content work. Enemy kits may be spell-only. Their
+Character names, HP/stat sheets, spell assignments, and enemy/boss kits and loot
+lists remain Phase 05 content work. Enemy kits may be spell-only. Their
 final values must be recorded before Phase 08 asset/content production begins.
 
 Each scheduled playtest records the build/content revision, participant relation
@@ -91,8 +93,9 @@ numeric fun score before baseline evidence exists.
 
 The Steamworks parallel track secures app access early. After Phase 06, a
 first Steam "Coming Soon" page and the public site (`docs/site.md`) go live
-with real screenshots so wishlists can accumulate. Phase 12 prepares and assigns
-owners for final capsule art, screenshots, trailer, store copy, age/content
-disclosures, launch languages, pricing proposal, privacy/support contacts,
+with real screenshots after the initial publication checklist passes. Phase 12
+updates those materials and assigns owners for final capsule art, screenshots,
+trailer, store copy, age/content disclosures, launch languages, pricing proposal,
+privacy/support contacts,
 incident handling, server cost, and shutdown policy. Phase 13 approves and
 publishes the final set against the exact release artifacts.

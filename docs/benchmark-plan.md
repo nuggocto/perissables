@@ -68,9 +68,9 @@ blocks Release-ready.
 
 ### Question
 
-What is the smallest Railway-only topology within the entry-level subscription
-budget that gives worldwide parties acceptable nearby latency to one owning
-in-memory session while keeping drain and rollback simple for one developer?
+What is the smallest Railway-only topology within the contract's recorded monthly
+hosting ceiling that gives worldwide parties acceptable nearby latency to one
+owning in-memory session while keeping drain and rollback simple for one developer?
 
 ### Workloads
 
@@ -88,7 +88,8 @@ in-memory session while keeping drain and rollback simple for one developer?
   through summary to `Ended`. Exercise missing summary acknowledgements,
   reconnect without deadline extension, and drain deadline expiry separately.
 - Forced stop, process crash, regional outage, replacement deployment, and
-  rollback with the documented run-lost behavior.
+  rollback with the documented run-lost behavior. Include provider-initiated
+  replacement and long/paused runs; median playtime is not a maximum drain bound.
 
 ### Metrics and decision record
 
@@ -96,10 +97,11 @@ Record p50/p95/p99/max scheduled-send latency by source/host region, route and
 rejoin correctness, drain duration, sessions completed/lost, admission results,
 CPU, peak RSS, network use, deployment duration, and operator steps.
 
-The decision states the smallest Railway region set within the entry-level
-budget, creator-region placement, owning-process routing,
-measured drain deadline, rollback procedure, headroom/uncertainty, rejected
-alternatives, and the smallest workload that would invalidate it.
+The decision states the smallest Railway region set within the recorded hosting
+ceiling, its usage/traffic/overlap cost assumptions, creator-region placement,
+owning-process routing, measured drain deadline, rollback procedure,
+headroom/uncertainty, rejected alternatives, and the smallest workload that would
+invalidate it.
 
 ## Server capacity workload
 
@@ -142,8 +144,9 @@ a particular release candidate.
   outcome count agree with the frozen workload.
 - No unexpected error, disconnect, unreported missed tick, or healthy-client
   queue overflow.
-- Sustained CPU, peak RSS, volume, and network use retain at least `30%`
-  measured allocation headroom.
+- Sustained CPU, peak RSS, and network use retain at least `30%` measured
+  allocation headroom. Storage is gated only if the workload uses it; record the
+  applicable capacity and headroom without assuming a persistent volume.
 - p99 bounded-queue occupancy remains below the frozen Phase 12 headroom gate.
 - Missing the `64`-session resource target informs instance sizing, scaling, or
   admission limits; it does not permit correctness loss or create an unsupported
@@ -175,17 +178,20 @@ display, power/thermal mode, exact build, and unrelated load.
 
 Before setting the gate:
 
-1. measure actual refresh and presentation callback behavior with the smallest
-   production render path;
+1. record physical refresh separately from the target `60 FPS` presentation
+   cadence (`1000/60 ms`); measure pacing with the smallest production render path;
 2. measure timer/driver interval noise and run-to-run variation;
-3. freeze a tolerance and missed-refresh budget that exceed that noise but still
-   protect the 60 FPS experience; and
+3. freeze a tolerance and missed-presentation budget that exceed that noise but
+   still protect the 60 FPS experience; and
 4. publish the calibration artifact before candidate measurement.
 
-The gate is then p99 presentation interval at or below one measured refresh
-interval plus the frozen calibrated tolerance, within the frozen missed-refresh
-budget, with no unexplained update backlog, no silently dropped logical update,
-and no frame above `100 ms`.
+The reference display mode is `60 Hz`; higher-refresh modes are exploratory
+until added to the contract. The gate is p99 presentation interval at or below
+`1000/60 ms` plus the frozen calibrated tolerance, within the frozen
+missed-presentation budget, with no unexplained update backlog, no silently
+dropped logical update, and no frame above `100 ms`. Physical refresh cannot
+raise or lower the 60 FPS gate; an environment unable to present at 60 Hz makes
+the gate `BLOCKED`, rather than passing at a lower rate.
 
 Frozen `world`, `story`, and `combat` traces run at `1920x1080` after warmup
 for at least `10 minutes`, with `3` independent runs per OS/scene. `1280x720`
@@ -203,7 +209,7 @@ correctness workload rather than mixing a forced stall into normal frame data.
 | Resources | CPU user/system, peak RSS, allocations when useful |
 | I/O | Network ingress/egress by region and route |
 | Queues | occupancy distribution, refusal/overflow/coalescing |
-| Client | presentation/update intervals, missed refreshes, CPU/RSS/GPU |
+| Client | presentation/update intervals, missed presentations, physical refresh, CPU/RSS/GPU |
 | Artifact | executable/package compressed and uncompressed size |
 | Startup | Cold start, process-to-ready, drain, and replacement deployment |
 

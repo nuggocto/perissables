@@ -69,6 +69,20 @@ dice/combat events through one authoritative server.
 
 Excluded features do not reserve implementation detail in this contract.
 
+### Supported platforms and public website
+
+- Launch support is Windows 11 x86_64 and Linux x86_64 through the Phase 01-pinned
+  Steam Linux Runtime and named host baseline. Phase 01 records the minimum host
+  requirements; Phase 12 records exact QA OS builds, GPU/drivers, and UI scales.
+  A tested OS build is evidence, not a promise to support only that patch level.
+- Other OS versions, Linux host baselines, Steam Deck, controllers, and additional
+  display modes remain exploratory until explicitly added to this contract.
+- The public website is static game presentation, changelog/news, a Steam link,
+  and legal/privacy/support information. It has no accounts or gameplay role.
+  Phase 06 publication requires approved copy/media rights, working contacts,
+  and a privacy notice matching the actual host, logs, cookies, and embeds.
+  `docs/site.md` owns the page organization and publication checklist.
+
 ## Release Content Minimum
 
 | Content | Release minimum |
@@ -91,6 +105,8 @@ Excluded features do not reserve implementation detail in this contract.
 
 Choices may alter local events, checks, rewards, dialogue, and encounter details,
 but they do not create substantially different routes or bypass the boss.
+Per-run presentation counts describe full surviving routes; early wipes may
+present fewer beats, checks, or encounters and are recorded separately in evidence.
 
 ## Locked Gameplay Rules
 
@@ -120,6 +136,15 @@ randomness. Tests use fixed known states, not frequency assertions.
   triggers interactions, story events, or collision outcomes.
 - An interaction targets the valid object directly in front of the character
   within one tile.
+- Any connected living player may initiate a valid exploration interaction.
+  Only one party-wide interaction sequence may run at a time, including its
+  story, combat, and loot phases.
+  Starting it freezes all world positions and clears held movement; additional
+  movement or interaction intents are rejected, not queued for later execution.
+  Competing interactions follow serialized server order: the first valid one
+  starts the sequence, and later ones cannot start another while it is active.
+  A return to exploration restores control at the retained positions; an end
+  enters summary. Clients send fresh movement after control resumes.
 
 ### Story And Voting
 
@@ -183,6 +208,10 @@ randomness. Tests use fixed known states, not frequency assertions.
 
 - Characters and enemies have fixed positive HP values supplied by validated
   built-in content; HP is not derived from the six stats.
+- Each run starts characters at maximum HP with empty inventories and no effects.
+  HP, death, and acquired items persist between encounters; there is no passive
+  healing or resurrection. Spell charges reset to their authored per-encounter
+  values at each encounter start. The next run resets all run-owned state.
 - Turn order is descending Dexterity, then lexical actor ID.
 - Every turn allows exactly one attack, spell, item, or pass.
 - Combat has no grid, range, or positional movement. An action chooses from its
@@ -244,18 +273,23 @@ randomness. Tests use fixed known states, not frequency assertions.
   queue. The story continues and does not roll back other completed effects.
 - Dead players spectate. Apart from the leader-transfer control above, they
   cannot act or vote and cannot be targeted by actions requiring a living target.
-- After combat, a corpse exposes at most two server-approved eligible items to
-  the living party; no world-distance or combat-position test applies. For each
-  item, connected living players cast one replaceable vote for an eligible
-  living recipient with a free slot. The leader tie rule and lexical fallback
-  apply. An unassigned item disappears when the loot vote closes, at `45 seconds`
-  or early under the same all-ballots rule as story votes.
-- Loot uses the ballot eligibility and timeout table above, with no default
-  recipient. Recipient eligibility is checked again at closure. Concurrent loot
-  votes resolve in lexical corpse ID, then corpse loot-slot order; each corpse's
-  published loot slots are fixed for that loot phase, even after an assignment.
-  Each assignment commits before the next vote checks free slots. Invalid
-  recipient ballots are discarded, then the remaining ballots are tallied.
+- After an encounter victory, defeated enemy corpses offer their authored loot
+  lists of zero to two ordered item IDs, without a random draw. Loot is separate
+  from enemy-held inventory.
+  Player corpses create no loot. A wipe grants none. No world-distance or
+  combat-position test applies; with no offered items, skip the loot phase.
+- Each offered item has one replaceable ballot per connected living player for
+  a living reserved recipient with a free slot. All loot ballots stay open until
+  the shared phase closes, after `45 seconds` of unpaused gameplay or early when
+  every connected living player has a ballot for every offered item. Completing
+  ballots for one item alone neither closes that vote nor assigns the item.
+  Disconnect/death/leave discards ballots under the story-vote rules.
+- At phase closure, resolve items in lexical corpse ID, then published loot-slot
+  order. Slots remain fixed throughout the phase. Immediately before each tally,
+  discard ballots from ineligible voters or for recipients no longer living,
+  reserved, or holding a free slot. Use the story-vote tie table without a default
+  recipient. Commit each assignment before checking the next item's recipients;
+  unassigned items disappear. Ending the run cancels the phase without awards.
 - A player combat turn lasts `30 seconds`, then becomes an authoritative pass.
 - Combat ends on enemy defeat, party wipe, or a bounded engine round limit.
   Reaching the round limit is a party loss that enters the wipe summary, in
@@ -305,13 +339,17 @@ region ID. The Steam lobby carries that region's ID from the trusted allowlist,
 never an endpoint; joining and rejoining clients connect to that region.
 Joiners far from the creator accept the higher latency. Phase 10 tests an
 initial Americas/Europe/Asia topology and freezes the smallest Railway-only
-deployment that provides acceptable play within the entry-level subscription
-budget. Additional Railway regions follow observed player demand rather than
-launching speculatively.
+deployment that provides acceptable play within the owner-approved monthly
+hosting ceiling. Phase 01 records that numeric ceiling, currency, plan, and
+assumptions for production, staging, and traffic; included subscription credit
+is not a spending cap. Phase 10 compares measured usage and drain-overlap cost
+against it. Additional regions follow observed demand rather than speculation.
 
 Client frame gates are calibrated on the named reference machine before
-candidate measurement. They require the 60 FPS target, a predeclared missed
-refresh budget, no unexplained update backlog, and no frame above `100 ms`.
+candidate measurement in a `60 Hz` reference display mode. They measure the
+`1000/60 ms` target cadence with a predeclared missed-presentation budget, no
+unexplained update backlog, and no frame above `100 ms`. Physical monitor refresh
+is recorded separately and cannot relax the 60 FPS gate.
 No sub-millisecond tolerance is locked before the timer/driver noise floor is
 measured.
 
@@ -428,6 +466,20 @@ Initial wire safety ceilings:
   expected app and ownership before authority is granted. The server validates
   tickets through the Steam Web API over HTTPS and does not link the Steamworks
   SDK. The publisher Web API key is an operator secret.
+- Fresh means newly acquired for that connection attempt through the Web API
+  ticket flow, after its successful callback, with the expected service identity
+  string. Clients cancel ticket handles when a failed attempt or its owning
+  connection ends; they never resend an old ticket for rejoin. The server
+  validates each attempt and binds the returned player identity, not a claimed
+  identity or the license owner.
+  Phase 07 freezes the service identity, ownership policy, provider-supported
+  expiry/cancellation behavior, and bounded replay checks with real-provider
+  evidence. Successful validation alone is not proof of ticket age or non-reuse;
+  provider limitations must be resolved in this contract before production use.
+- Provider timeout, outage, rate refusal, or malformed response fails admission
+  closed with a stable service error. It cannot allocate a seat, spend a grant,
+  replace a connection, or extend a reservation. Verification and retries are
+  bounded; cached success cannot substitute for the required fresh validation.
 - Tickets are never logged or persisted raw, and the client stores no rejoin
   bearer token locally.
 - A validated returning Steam identity may reclaim only its own reserved seat.
@@ -435,8 +487,9 @@ Initial wire safety ceilings:
 - A disconnected seat remains reserved for an initial `10 minute` grace window,
   bounded by an initial `4 hour` session lifetime window. The window restarts
   each time the session enters `Lobby` (creation and every return from
-  summary), so repeated runs are not cut short; it still bounds idle lobbies and
-  stuck runs.
+  summary) and on a successful `Lobby` -> `Running` commit. This gives a new run
+  a full bounded window even after a long lobby wait. Due expiry wins over start;
+  rejected starts, rejoin, activity, and summary entry never extend the window.
 - Rejoin receives a recipient-specific resync and acknowledges it before new
   gameplay input is accepted.
 - Production connections use the trusted environment endpoint allowlist with
@@ -460,6 +513,17 @@ requires permission to enter the requested game session:
   invite/membership flow, including owner handoff. The server trusts the current
   owner's explicit authorization, not an applicant's reported Steam membership
   or lobby metadata. No separate approval screen is required.
+- Server lobby ownership remains authoritative if Steam selects a different
+  owner. Phase 07 reconciles Steam ownership to it through supported client APIs,
+  with bounded retries and visible failure guidance. Automatic grant issuance
+  waits for ownership/membership synchronization; existing seats and valid rejoin
+  remain usable. Steam callbacks cannot transfer server authority.
+- Leave/removal suppresses automatic re-granting while that identity remains in
+  the same Steam membership. Later admission needs a new owner grant after a
+  fresh Steam join or an explicit owner reauthorization; a stale membership
+  callback cannot undo removal. Phase 07 freezes bounded suppression-state limits
+  and proves owner handoff preserves it. Exhaustion stops automatic new grants
+  rather than evicting suppression records; session end clears the state.
 - Keep at most one pending grant per identity/session. Grant count, issuance
   rate, and absolute lifetime have tested ceilings frozen in Phase 02. Grants
   expire without extending session lifetime. Owner change, run start, drain,
@@ -492,19 +556,26 @@ States are `Lobby`, `Running`, `Summary`, and `Ended`.
   longest-connected remaining player, then lexical player ID. With no connected
   player, ownership is vacant; apply the same rule on the next join/rejoin.
   Lobby ownership is separate from run leadership and requires no living actor.
-- Starting requires two to four occupied seats, all connected, ready, and using
-  unique characters, and a process that is not draining. Membership or
-  character-selection changes clear readiness.
+- Only the current connected lobby owner may issue `StartRun`. Starting requires
+  two to four occupied seats, all connected, ready, and using unique characters,
+  with any required resync acknowledged, an unexpired session, and a process
+  that is not draining. Membership, selected-story, or character-selection
+  changes clear readiness.
 - Run completion or wipe enters summary.
 - Acknowledgement by every remaining seat, or the `2 minute` summary timeout,
   returns remaining seats to a cleared lobby,
   except during drain, when the session enters `Ended` as specified below.
+  The summary timeout is absolute and capped by session/drain expiry.
 - Empty/expired sessions end and release capacity.
 - Combat turns and story/loot votes have monotonic deadlines. When no living
   player is connected, gameplay and its deadlines pause, including enemy turns
   and automatic story progression. Resume with the remaining durations when a
   living player reconnects; dead spectators cannot keep gameplay running alone.
   Seat, credential, session, and deployment-drain expiry remain absolute.
+  Dialogue deadlines pause too. A last-living-player disconnect committed before
+  automatic progression pauses it; a disconnect committed after progression
+  cannot undo its result. Due absolute expiries are applied before new input or
+  gameplay closure; other events retain the session's serialized order.
 
 Departure transitions are authoritative and apply before selecting replacement
 leaders or resolving subsequent gameplay:
@@ -610,6 +681,25 @@ Exact parser and resource ceilings are frozen with typical, large, limit, and
 rejected built-in fixtures. Validation exists to reject a bad repository-owned
 build before release.
 
+Structural validation runs before admission and accepts structurally valid partial
+development aggregates without requiring the release inventory. Release gates
+separately check aggregate counts and assets, then graph checks and headless route
+transcripts establish per-route counts and the mandatory boss for surviving
+routes. Measured playtests establish duration; an authored estimate is not proof.
+Inventory/route completeness is required by Phase 08; Phase 12 qualifies duration.
+Final package checks carry both evidence sets forward.
+
+### Map and asset formats
+
+- One finite orthogonal TMX map uses `16x16` tiles and explicit collision/event
+  objects, with no scripts or external resource resolution.
+  Presentation references name packaged manifest assets; the TMX parser never
+  fetches them from the filesystem or network.
+- Character frames are four-direction `16x16` pixel art.
+- Music/ambience use Ogg Vorbis; short SFX use signed 16-bit PCM WAV.
+- Packaged audio is mono/stereo `48 kHz`. Decoded dimensions/durations follow the
+  evidence-gated resource limits, rather than introducing additional asset scope.
+
 ## Presentation And Local Settings
 
 English is the source and fallback language. Launch locales are English (`en`)
@@ -636,7 +726,11 @@ other non-authoritative preferences.
   `~/.local/share/les-perissables/`.
 - Windows data root: `%AppData%/LesPerissables/`.
 - Settings writes use a same-directory temporary file, sync, and atomic replace
-  where supported.
+  where supported. Before replacement commits, a failure reports an error and
+  preserves the previous usable file. A durability failure after replacement
+  reports uncertainty and keeps the committed valid file without claiming a
+  rollback. Clean up owned temporary files and report cleanup failures. Phase 06
+  qualifies replacement behavior on both OSes.
 - Malformed/future settings are preserved for diagnosis and replaced only in
   memory by safe defaults; startup does not panic.
 
@@ -750,6 +844,8 @@ Phase 13 release candidates exist.
 - The Phase 10 regional deployment, graceful drain, forced-stop, and rollback
   behavior matches the measured operating contract.
 - Release QA passes on exact Linux/Windows package digests.
+  Its final verdict is `PASS` or `PASS WITH KNOWN ISSUES` under `docs/qa-plan.md`;
+  accepted issues cannot waive a required journey or release criterion.
 - Calibrated client and server capacity/performance gates pass with no
   unexpected errors, dropped correctness work, or hidden saturation.
 - Steam ownership, lobbies/invites, depots, production deployment, signing,

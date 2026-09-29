@@ -10,7 +10,7 @@ automated tests. QA observes user-visible consequences and session effects.
 ## Verdicts
 
 - `PASS`: every applicable required journey passed on the identified artifact
-  with no release-blocking defect.
+  and no known defect remains in the exercised scope.
 - `PASS WITH KNOWN ISSUES`: required journeys passed; only documented
   non-blocking defects remain with an owner and accepted residual risk.
 - `FAIL`: a release criterion failed or a blocker/critical defect is
@@ -19,7 +19,10 @@ automated tests. QA observes user-visible consequences and session effects.
 - `INCONCLUSIVE`: evidence is ambiguous, contradictory, or intermittent.
 
 Every report also recommends `ship`, `hold`, or `no recommendation`.
-Release-ready requires final `PASS`, recorded in the Phase 13 evidence.
+Release-ready permits final `PASS`, or `PASS WITH KNOWN ISSUES` with explicit
+owner acceptance of each non-blocking issue, recorded in Phase 13 evidence.
+Neither verdict may waive a required journey or release criterion. `FAIL`,
+`BLOCKED`, and `INCONCLUSIVE` cannot satisfy the final gate.
 
 ## Evidence
 
@@ -38,16 +41,18 @@ and a stated protocol; a later pass does not erase it.
 
 ## Supported Matrix
 
+Support promises come from [the contract](mvp-contract.md#supported-platforms-and-public-website).
+This matrix records evidence environments, not additional product exclusions.
+
 | Target | Required environment |
 | --- | --- |
 | Linux | Exact Phase 01-pinned Steam Linux Runtime/container and supported x86_64 host baseline; `1280x720` and `1920x1080` |
 | Windows | Frozen Windows 11 x86_64 build; `1280x720` and `1920x1080` |
 
-Record the Linux runtime/container digest, host distribution, windowed/fullscreen
-mode, UI scale, GPU, and driver. Keyboard-only
-operation through the single shipped UI is required. Other Linux distributions,
-Steam Deck, controllers, and additional display modes are exploratory until
-added to the support contract.
+Phase 01 names the Linux runtime and minimum host baseline; Phase 12 freezes the
+exact OS builds, runtime digest, windowed/fullscreen modes, UI scales, GPU, and
+driver used for final QA. Keyboard-only operation is required. Additional
+environments are exploratory unless the support contract is updated.
 
 ## Required Journeys
 
@@ -62,7 +67,7 @@ added to the support contract.
    and single scalable UI at required resolutions/scales in English and French,
    with keyboard-only navigation, visible focus, correct wrapping/font
    fallback, independent audio channels, and presentation fallbacks.
-4. **Hosted convergence.** Complete deterministic 2-, 3-, and 4-player staging
+4. **Hosted convergence.** Exercise scripted 2-, 3-, and 4-player staging
    runs through private/friends Steam invites, including owner handoff and
    successful owner-authorized game admission; verify the session is created in
    the creator's lowest-latency Railway region and that far joiners reach it
@@ -102,11 +107,18 @@ Do not mutate the exact candidate to manufacture an internal failure and then
 describe the result as candidate QA. Modified negative packages or faulting
 environments are separate diagnostic artifacts with their own digest.
 
+Production QA uses real randomness and asserts that clients agree on the
+server's observed outcomes and reach the correct victory/wipe summary. Record
+steps and outcome-dependent expectations; do not force rolls or retry until a
+preferred outcome appears. Fixed-RNG transcripts belong to automated integration
+tests. Spell-result and deadline matrices are not repeated in manual QA.
+
 ## Operations Oracles
 
 - `/healthz` reports process liveness only.
 - `/readyz` remains false until built-in content and required initialization
-  complete, and becomes false before graceful drain.
+  complete. Committing drain closes new admission/run starts before reporting
+  unready; no post-unready start may commit.
 - Capacity exhaustion rejects new admission but does not make healthy existing
   sessions or reserved-seat rejoin unready.
 - Shutdown follows [the contract's drain rules](mvp-contract.md#in-memory-sessions-and-draining)

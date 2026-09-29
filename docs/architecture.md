@@ -72,6 +72,10 @@ intent -> authority -> view/event path.
 
 ## Crate Boundaries
 
+The following layout is illustrative below the six required crate roots. Create
+modules as behavior and ownership require them; empty directories are not phase
+deliverables.
+
 ```text
 Cargo.toml
 Cargo.lock
@@ -174,9 +178,11 @@ process, so the region endpoint reaches the owning process.
 
 Deployment drain, run-loss, and rejoin-while-draining behavior are defined in
 [the contract](mvp-contract.md#in-memory-sessions-and-draining). The Phase 01
-Railway spike and Phase 10 decision establish whether a draining Railway
-deployment can still receive rejoins; the architecture changes before Phase 11
-if it cannot.
+Railway spike must establish that owning-process rejoin and a useful drain window
+are feasible; a failure changes the contract before Phase 02. Phase 10 then
+qualifies routing and drain duration with the real game, including long/paused
+runs and provider-initiated replacement. Its operating decision must pass before
+Phase 11. A regional endpoint alone is not proof of affinity during replacement.
 
 ## Engineering Practices
 

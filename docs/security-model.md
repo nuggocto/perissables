@@ -18,6 +18,10 @@ Prevent a client from acting as another player, deciding authoritative outcomes,
 reading hidden state, replaying actions into invalid mutation, redirecting Steam
 proof to an untrusted endpoint, or consuming unbounded resources.
 
+Runtime secrets include RNG state, private inventories, and unrevealed session
+state. Authored story/trigger definitions shipped in client packages are
+inspectable; projection filtering does not make distributed static content secret.
+
 ## Threat actors and boundaries
 
 - Unauthenticated internet clients may open connections and send malformed
@@ -34,6 +38,7 @@ proof to an untrusted endpoint, or consuming unbounded resources.
 | Threat | Required control | Verification | Residual risk |
 | --- | --- | --- | --- |
 | Player/session takeover | Fresh Steam app/ownership validation; identity/session/player binding; one connection | Wrong identity/app, replay, takeover, seat reclaim, and expiry tests | A compromised Steam account/device remains authoritative |
+| Identity-provider failure | Fresh validation fails closed; bounded timeouts/retries; preserve existing seats/connections | Outage, rate refusal, malformed response, cancellation/reuse, and failed-takeover tests | Steam outages can prevent admission/rejoin without ending healthy connected runs |
 | Uninvited game-session admission | Current lobby owner authorizes a bounded, expiring identity/session join grant; successful allocation consumes it | Direct uninvited join, wrong identity/session, non-owner issuance, expiry/revocation, replay, and invite-flow tests | The current lobby owner chooses whom to admit; Steam metadata alone has no authority |
 | Client authority or hidden-state leak | Server-owned state machine; deny-by-default action checks; recipient views | 2/3/4-client transcripts and differential projection tests | New actions/projections require renewed review |
 | Development identity in release | Compile-time feature separation and package inspection | Final packages prove adapter/symbol/config absence | Build misconfiguration remains possible until package checks run |
@@ -56,7 +61,9 @@ finding it accepts.
   them raw. Validate them server-side through the Steam Web API; the publisher
   key lives only in the deployment's secret store.
 - A fresh validated Steam identity can reclaim only its own reserved in-memory
-  seat.
+  seat. Ticket freshness and real-provider evidence follow
+  [the identity contract](mvp-contract.md#identity-and-rejoin); a fake provider
+  cannot establish Steam's ticket expiry or replay behavior.
 - New-seat admission to an existing session requires the contract's join grant
   from the current connected lobby owner. Authentication, knowledge of a session
   ID, and client-reported Steam membership do not authorize admission.
@@ -106,8 +113,7 @@ finding it accepts.
 
 ## Privacy and retention
 
-- No optional gameplay telemetry, voice recording, or voice playback ships by
-  default.
+- No optional gameplay telemetry ships by default. Voice remains excluded from MVP.
 - Use only gameplay-required platform/session identifiers.
 - Crash upload, if added, is informed, opt-in, bounded, and redacted.
 - Logs, sessions, crash data, and raw QA/benchmark evidence have documented

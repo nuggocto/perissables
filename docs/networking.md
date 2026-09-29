@@ -106,6 +106,11 @@ IDs.
   Phase 02 proves this with local identities; Phase 07 connects owner approvals
   to the Steam invite/membership flow before game admission.
 - Raw Steam tickets are never logged or persisted.
+- Ticket acquisition, service-identity binding, provider failure, and replay
+  qualification follow [the identity contract](mvp-contract.md#identity-and-rejoin).
+  Phase 07 proves cancellation/reuse behavior with the real provider, not only
+  injected responses. Automatic grants obey the ownership-sync and removal
+  suppression rules in [new-seat authorization](mvp-contract.md#new-seat-authorization).
 - A returning Steam identity may reclaim only its own reserved in-memory seat,
   without needing a new join grant.
 - One player has at most one authoritative connection.

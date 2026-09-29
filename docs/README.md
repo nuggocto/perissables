@@ -19,7 +19,10 @@
 - `docs/mvp-contract.md` is authoritative for locked product and compatibility
   behavior.
 - Supporting documents explain structure, production inventory, and
-  verification. They do not create new product requirements.
+  verification. They do not create new product requirements. Verification plans
+  own their evidence procedures within the contract; `docs/roadmap.md` owns
+  execution order. `docs/site.md` owns the page organization and publication
+  checklist delegated by the contract.
 - Evidence-gated implementation decisions remain explicitly provisional until
   their named phase records the result.
 - Exact released protocol/content/settings schemas and byte fixtures are
