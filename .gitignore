@@ -1,6 +1,7 @@
-# Rust build output
-/target/
-**/*.rs.bk
+# Build and package output
+/build/
+/bin/
+/dist/
 *.profraw
 *.profdata
 
