@@ -121,8 +121,10 @@ everyone; clients never decide their own successful actions.
 
 ### Exploration and story
 
-- Continuous cardinal movement, no diagonals. The host decides speed, collision,
-  and final positions. Interact with a valid object directly ahead within one tile.
+- Tile-stepped cardinal movement, one `16x16` tile per step, no diagonals. A held
+  direction repeats steps at a fixed host-defined rate. The host accepts or
+  rejects each step and owns final positions. Players do not block each other.
+  Interact with a valid object on the tile directly ahead.
 - Any connected living player can initiate an interaction. Only one party-wide
   sequence runs at a time, including its story, combat, and loot. Freeze world
   positions and clear held movement until exploration resumes; do not queue
@@ -131,11 +133,17 @@ everyone; clients never decide their own successful actions.
   transition, return, and end nodes. Effects use supported flag/item operations,
   never story-specific executable code. Bound automatic transition chains.
 - Dialogue advances when all connected living players press continue, or after
-  `20 seconds` of unpaused gameplay. Disconnect discards a player's continue press.
-- Pick a run leader uniformly at run start. Story checks use the connected living
-  leader, otherwise the connected living player with the lowest lexical player ID.
-  Selecting the actor, applying modifiers, rolling, and committing happen together.
-  With no eligible actor, wait without spending anything; ending the run cancels it.
+  `20 seconds` of unpaused gameplay. Once more than half of them have pressed,
+  cut the remaining wait to at most `5 seconds`, so one idle player cannot stall
+  every beat. Disconnect discards a player's continue press.
+- Pick a run leader uniformly at run start. The leader breaks ties and is the
+  fallback actor; they do not roll every check.
+- The player who started the interaction rolls the story checks in its sequence,
+  using their own character's stats. If that player is not connected and living
+  when a check resolves, use the connected living leader, otherwise the connected
+  living player with the lowest seat index. Selecting the actor, applying
+  modifiers, rolling, and committing happen together. With no eligible actor,
+  wait without spending anything; ending the run cancels it.
 - Checks require success/failure branches. Missing critical branches use the
   corresponding normal branch while keeping critical feedback.
 - Each story vote has a fixed set of choices and a visible timeout default.
@@ -143,8 +151,8 @@ everyone; clients never decide their own successful actions.
   of unpaused gameplay, or once everyone eligible has voted. A ballot at or after
   the deadline is too late.
 - The choice with the most votes wins. A tied leader ballot wins if the leader is
-  connected and living; otherwise use the tied choice backed by the lowest lexical
-  player ID. With no ballots, select the declared default. Voting consumes no randomness.
+  connected and living; otherwise use the tied choice backed by the lowest seat
+  index. With no ballots, select the declared default. Voting consumes no randomness.
 - Disconnect, death, or departure discards ballots. Reconnect does not restore
   them. A disconnected leader keeps the role during their seat reservation but
   cannot break ties. A dead connected leader may transfer it to a connected living
@@ -157,11 +165,15 @@ everyone; clients never decide their own successful actions.
   at maximum HP, empty inventory, and no effects. HP, death, and items persist
   between encounters; no passive healing or resurrection. Spell charges reset
   each encounter. A new run resets all run-owned state.
-- Turn order is descending Dexterity, then lexical actor ID. One attack, spell,
-  item, or pass per turn. There is no combat grid or range. A player has
-  `30 seconds` of unpaused gameplay to act, then passes automatically.
-- Attack checks Strength. Success deals `max(1, floor(Strength / 5))` damage;
-  critical success doubles it; failures deal zero.
+- Turn order is descending Dexterity, then players by seat index, then enemies in
+  the encounter's authored order. One attack, spell, item, or pass per turn.
+  There is no combat grid or range. A player has `30 seconds` of unpaused
+  gameplay to act, then passes automatically.
+- Each character and enemy has one authored basic attack naming its check stat
+  and a fixed positive damage. Success deals that damage; critical success
+  doubles it; failures deal zero. Author each attack on a stat the actor is good
+  at, so a low-Strength character still has a turn worth taking. Damage does not
+  derive from the stat.
 - A spell names its check stat, effect, target type, magnitude where applicable,
   and per-encounter charges. Casting spends one charge and the turn, even on failure.
 - Five effects: direct damage, healing, guard, next-check bonus, next-check penalty.
@@ -181,7 +193,8 @@ everyone; clients never decide their own successful actions.
   clear on death, removal, encounter end, or run reset, not on disconnect.
 - Enemies choose a legal action uniformly from their kit, then choose a valid target
   uniformly. With no legal action they pass. Kits may contain only spells. No separate AI system.
-- Four inventory slots, one item per slot, filled lowest-index first. Items work
+- Four inventory slots, one item per slot, filled lowest-index first. Inventories
+  are visible to the whole party. Items work
   only on the holder's combat turn, without a roll, and spend the item and turn
   together. Damage/penalties target living opponents; healing/guard/bonuses target
   living allies including self, or self only, as authored. A legal full-HP or
@@ -192,8 +205,8 @@ everyone; clients never decide their own successful actions.
   random drops or its held inventory. Player corpses and wipes create no loot.
 - Each loot item gets replaceable ballots for a living reserved recipient with a
   free slot. All items share one `45 second` phase, closing early only when every
-  eligible voter has voted on every item. Resolve in lexical corpse ID then loot-slot
-  order, rechecking eligibility and space before each award. Use the story tie
+  eligible voter has voted on every item. Resolve in authored enemy order then
+  loot-slot order, rechecking eligibility and space before each award. Use the story tie
   rule, but no default recipient: unassigned items disappear. Run end cancels loot.
 - Dead players spectate, cannot vote or act, and cannot be living targets. Their
   only gameplay control is leader transfer when applicable. Enemy defeat wins;
@@ -210,7 +223,7 @@ everyone; clients never decide their own successful actions.
 | Gameplay transport | Steam Networking Sockets with Steam Datagram Relay |
 | Simulation | Authoritative rules running in the host player's process |
 | Stories and definitions | Repository-owned JSON |
-| Map authoring | Tiled, packaged TMX with collision/event objects |
+| Map authoring | Tiled, packaged JSON map (`.tmj`) with collision/event objects |
 | Local preferences | Settings file; no authoritative save data |
 | Distribution | Windows/Linux builds uploaded through SteamPipe |
 
@@ -224,10 +237,33 @@ and content. Rules must be testable without a window or Steam connection. The ho
 player's own actions go through the same validation as remote actions. No custom
 engine framework, plugin system, or separate web backend.
 
-Pin the compiler, raylib, Steamworks SDK, and binding revisions when the first
+Code shape, decided before the first line:
+
+- Run state is one plain struct with fixed-capacity arrays and no pointers. Seats,
+  enemies, items, and story nodes refer to each other by index. A snapshot, a
+  reset, and a test fixture are then all a copy of that struct.
+- Content IDs are strings only in JSON. Loading resolves them to `distinct`
+  integer IDs, and the rules never compare strings.
+- Three lifetimes: a content arena loaded once, a run arena freed at run reset,
+  and the temp allocator reset every frame.
+- `core:encoding/json` unmarshal skips fields it does not know. The "known
+  fields" content check needs its own pass over the parsed value.
+- Odin bundles no Steamworks binding. Bind the flat C API for the calls we use.
+  Dispatch Steam callbacks manually from the main loop, and set `context` at the
+  top of every `"c"` callback before it allocates or logs.
+- Encode network messages field by field with bounds checks. Do not send raw
+  struct memory.
+
+Start on the current compiler release (`dev-2026-11a` when this was written). Pin
+the compiler, raylib, Steamworks SDK, and binding revisions when the first
 Windows/Linux integration works. Record build instructions here then; there are
 no build commands to run today. Verify licensing and redistribution requirements
 for every packaged dependency.
+
+Windows builds need a Windows machine or CI runner. Build Linux release binaries
+inside the Steam Linux Runtime SDK container, not on the development machine, so
+the binary does not require a newer glibc than players have. Confirm this when
+naming the supported Linux baseline.
 
 ## Online play and servers
 
@@ -271,13 +307,18 @@ an economy, or persistent progression. Dedicated servers are not a launch promis
 - Guests send intentions, not outcomes. The host validates phase, identity,
   sequence, target, and bounds before mutation, then sends results and snapshots.
   Use ordered action IDs/revisions to reject replay and avoid duplicate effects.
-- Send recipient-specific state, not random-generator state or other players'
-  private inventories. Static story files shipped to players are inspectable.
+- Every guest gets the same full run state, inventories included. It is small
+  enough to send whole on each change, and a reconnect resync is that same
+  message. Never send random-generator state. Static story files shipped to
+  players are inspectable.
 - Keep messages, queues, per-peer work, and retries bounded. Reject malformed
   traffic, rate-limit input, and disconnect slow peers without stalling the party.
-- Target a `20 Hz` simulation/network update with coalesced movement/state and
-  `60 FPS` presentation. Predict local movement, reconcile to host positions,
-  and interpolate remote players. Prediction never triggers authoritative events.
+- Target a `20 Hz` simulation/network update and `60 FPS` presentation. A guest
+  sends one step intent per tile. Its client starts the step animation at once
+  and snaps back if the host rejects the step, which only happens when a
+  sequence froze the world, because clients hold the same collision map. Other
+  players animate between the tiles the host reports. There is no continuous
+  prediction or reconciliation, and a local step never triggers an event.
 - Poll Steam callbacks and network events without blocking rendering. Start with
   a simple owned game loop rather than a background task framework.
 
@@ -313,9 +354,11 @@ Keep stories, characters, enemies, spells, items, maps, localized text, and asse
 in this repository. Engine code defines the five effects and all resolution rules;
 JSON assembles them into the supermarket adventure. No executable content scripts.
 
-Keep the finite orthogonal TMX map with `16x16` tiles and explicit collision/event
-objects. Embed tileset definitions; presentation references resolve only to packaged
-assets. Parsing must not fetch external files or network resources.
+Keep the finite orthogonal Tiled map with `16x16` tiles and explicit collision/event
+objects, exported as JSON (`.tmj`) so maps and definitions share one parser. Store
+layer data as plain uncompressed arrays. Embed tileset definitions; presentation
+references resolve only to packaged assets. Parsing must not fetch external files
+or network resources.
 
 Validate content before play: known fields, unique IDs, valid references, bounded
 values/resources, reachable branches, and terminating automatic transitions.
@@ -403,6 +446,11 @@ No calendar estimate until the first online slice works. Track active tasks in
 issues; keep only milestone completion and important decisions here.
 
 - [x] Agree on the premise, art direction, Odin + raylib, and player-hosted Steam model.
+- [ ] **Play the rules locally.** Build the rules module and a hot-seat build on
+  one machine, with no Steam and placeholder graphics. Two to four people share
+  a keyboard through one check, one fight, and one loot vote. This is
+  development-only and can run alongside the next milestone. If the dice and
+  combat are not fun here, change the rules before building networking on them.
 - [ ] **Prove the stack.** Pin tools, compile both targets, and connect two machines
   through Steam. Prove invite authorization, cross-platform play, guest reconnect,
   and host-loss feedback before building the full game around the integration.
