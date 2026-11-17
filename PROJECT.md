@@ -132,10 +132,11 @@ everyone; clients never decide their own successful actions.
 - Stories are data-driven state machines with dialogue, check, encounter,
   transition, return, and end nodes. Effects use supported flag/item operations,
   never story-specific executable code. Bound automatic transition chains.
-- Dialogue advances when all connected living players press continue, or after
-  `20 seconds` of unpaused gameplay. Once more than half of them have pressed,
-  cut the remaining wait to at most `5 seconds`, so one idle player cannot stall
-  every beat. Disconnect discards a player's continue press.
+- With at least one connected living player, dialogue advances when all of them
+  press continue or after `20 seconds` of unpaused gameplay. If there are at least
+  two and exactly one has not pressed continue, cut the remaining wait to at most
+  `5 seconds`. In a two-player party, the first press starts this shortcut.
+  Disconnect discards a player's continue press but does not extend the deadline.
 - Pick a run leader uniformly at run start. The leader breaks ties and is the
   fallback actor; they do not roll every check.
 - The player who started the interaction rolls the story checks in its sequence,
@@ -239,9 +240,9 @@ engine framework, plugin system, or separate web backend.
 
 Code shape, decided before the first line:
 
-- Run state is one plain struct with fixed-capacity arrays and no pointers. Seats,
-  enemies, items, and story nodes refer to each other by index. A snapshot, a
-  reset, and a test fixture are then all a copy of that struct.
+- Host run state is one plain struct with fixed-capacity arrays and no pointers.
+  Seats, enemies, items, and story nodes refer to each other by index. Copy the
+  struct for test fixtures and derive a separate public snapshot for clients.
 - Content IDs are strings only in JSON. Loading resolves them to `distinct`
   integer IDs, and the rules never compare strings.
 - Three lifetimes: a content arena loaded once, a run arena freed at run reset,
@@ -306,19 +307,26 @@ an economy, or persistent progression. Dedicated servers are not a launch promis
   update guidance on mismatch; never download content from lobby metadata.
 - Guests send intentions, not outcomes. The host validates phase, identity,
   sequence, target, and bounds before mutation, then sends results and snapshots.
-  Use ordered action IDs/revisions to reject replay and avoid duplicate effects.
-- Every guest gets the same full run state, inventories included. It is small
-  enough to send whole on each change, and a reconnect resync is that same
-  message. Never send random-generator state. Static story files shipped to
-  players are inspectable.
+  Use ordered action IDs to reject replays and duplicates. The host assigns an
+  input-window ID to each dialogue beat, story vote, combat turn, loot phase,
+  and entry into exploration. These IDs are not reused within a session,
+  including across runs. The public snapshot carries the current ID. Clients
+  attach the ID they see when they capture the input. Reject any gameplay
+  action that does not match the current window before it changes gameplay
+  state, even if its action ID is new.
+- Every guest gets the same full public snapshot, inventories included. Send it
+  whole on each change and use the same message for reconnect resync. The host
+  keeps random-generator state out of this snapshot and all other messages.
+  Static story files shipped to players are inspectable.
 - Keep messages, queues, per-peer work, and retries bounded. Reject malformed
   traffic, rate-limit input, and disconnect slow peers without stalling the party.
 - Target a `20 Hz` simulation/network update and `60 FPS` presentation. A guest
-  sends one step intent per tile. Its client starts the step animation at once
-  and snaps back if the host rejects the step, which only happens when a
-  sequence froze the world, because clients hold the same collision map. Other
-  players animate between the tiles the host reports. There is no continuous
-  prediction or reconciliation, and a local step never triggers an event.
+  sends one step intent per tile. Its client starts the step animation at once.
+  The host checks the step against the current exploration phase, authoritative
+  position, movement rate, and collision map. If the host rejects the step, the
+  client corrects to the host's reported position. Other players animate between
+  the tiles the host reports. There is no continuous prediction or
+  reconciliation, and a local step never triggers an event.
 - Poll Steam callbacks and network events without blocking rendering. Start with
   a simple owned game loop rather than a background task framework.
 
