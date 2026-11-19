@@ -21,19 +21,27 @@ without wasting an entire evening.
 
 ## The game and its art direction
 
-The setting, tone, and visual direction stay the same:
+Setting, tone, and visual direction:
 
 - Top-down 2D pixel-art exploration, with the readability of classic Pokémon or
   early Zelda. Use `16x16` tiles and four-direction `16x16` character frames.
+- The world renders at a virtual `320x180` (20 by about 11 tiles visible) and the
+  UI at `640x360`, both scaled by whole numbers only: world `x4` and UI `x2` at
+  `1280x720`, world `x6` and UI `x3` at `1920x1080`, and so on. Non-16:9 screens
+  get black bars, never stretching or fractional scaling.
 - One supermarket map. Its storage room is an area of that map, with its own
   atmosphere, not a second theme or content pack.
 - A separate combat view with the party and enemies facing each other.
 - One readable, scalable UI: dialogue and choices, combat actions, HP bars, dice
-  feedback, and four small inventory slots. No alternate skins.
+  feedback, four small inventory slots, and a rules page in the pause menu. No
+  alternate skins.
 - Visible keyboard focus, keyboard-only navigation, and readable text at
   `1280x720` and `1920x1080`. Target smooth `60 FPS` presentation.
 - Music, ambience, and event-driven SFX. No voice playback or voice chat.
-- English and French, with packaged fonts, proper accents, and text wrapping.
+- Ten languages: English, French, Simplified Chinese, Japanese, Korean, Thai,
+  Polish, Czech, Turkish, and Russian, each with a packaged font, correct
+  shaping, and line breaking that follows the language's own rules (see
+  **Localization**).
 
 Example characters, not final balance sheets:
 
@@ -77,6 +85,7 @@ Measure duration in playtests; an estimate in a story file is not evidence.
 | Spells and items | Eight character spells and eight items |
 | Encounters per full surviving run | Two normal encounters and one boss |
 | Story beats per full surviving run | Four to six checks, three major choices, `25–40` dialogue/choice beats |
+| Onboarding | The route's first check and first encounter teach the rules in dialogue |
 | Music | Lobby, exploration, combat, and boss tracks |
 | Other audio | Two ambience loops and at least twenty distinct SFX |
 
@@ -86,13 +95,15 @@ matchmaking, or mid-run kicking. Starting a run requires two to four players;
 an existing run may continue with one survivor. Solo starts are development-only.
 
 Launch targets are Windows 11 x86_64 and Linux x86_64. Other platforms, Steam
-Deck/controller support, achievements, additional themes, and further languages
+Deck/controller support, Remote Play Together (it needs controllers to tell
+players apart), a demo, achievements, additional themes, Traditional Chinese,
+right-to-left languages such as Arabic, and further languages
 are later decisions, not promises for this release.
 
 ## Gameplay rules
 
-The technology changes, not the game's rules. The host resolves these rules for
-everyone; clients never decide their own successful actions.
+The host resolves these rules for everyone; clients never decide their own
+successful actions.
 
 ### Party-size balance
 
@@ -111,11 +122,11 @@ everyone; clients never decide their own successful actions.
 
 - Six stats: Strength, Perception, Chance, Dexterity, Charisma, and Education.
   Base stats are integers in `5..=70`.
-- Roll uniformly from `0..=100`, including both endpoints. `0`, displayed as
-  `000`, is critical success; `100` is critical failure. Otherwise a roll at or
-  below the check target succeeds.
-- For an unmodified stat, normal success probability is `stat / 101`; including
-  the critical it is `(stat + 1) / 101`.
+- Roll uniformly from `1..=100`. `1` is critical success; `100` is critical
+  failure. Otherwise a roll at or below the check target succeeds.
+- A stat is its exact success chance: stat `45` succeeds on `45%` of rolls,
+  criticals included (`1%` critical, `44%` normal). The UI shows the actor, the
+  stat, and the final chance before every roll.
 - The host owns the run's random generator. Rejected actions consume no random
   draws. Tests supply known random states and explicit time.
 
@@ -132,40 +143,37 @@ everyone; clients never decide their own successful actions.
 - Stories are data-driven state machines with dialogue, check, encounter,
   transition, return, and end nodes. Effects use supported flag/item operations,
   never story-specific executable code. Bound automatic transition chains.
-- With at least one connected living player, dialogue advances when all of them
-  press continue or after `20 seconds` of unpaused gameplay. If there are at least
-  two and exactly one has not pressed continue, cut the remaining wait to at most
-  `5 seconds`. In a two-player party, the first press starts this shortcut.
-  Disconnect discards a player's continue press but does not extend the deadline.
-- Pick a run leader uniformly at run start. The leader breaks ties and is the
-  fallback actor; they do not roll every check.
+- "Connected players" below includes dead ones. Dialogue advances when every
+  connected player presses continue or after `20 seconds` of unpaused gameplay.
+  If there are at least two and exactly one has not pressed continue, cut the
+  remaining wait to at most `5 seconds`. In a two-player party, the first press
+  starts this shortcut. Disconnect discards a player's continue press but does
+  not extend the deadline.
 - The player who started the interaction rolls the story checks in its sequence,
   using their own character's stats. If that player is not connected and living
-  when a check resolves, use the connected living leader, otherwise the connected
-  living player with the lowest seat index. Selecting the actor, applying
-  modifiers, rolling, and committing happen together. With no eligible actor,
-  wait without spending anything; ending the run cancels it.
+  when a check resolves, use the connected living player with the lowest seat
+  index. Selecting the actor, applying modifiers, rolling, and committing happen
+  together. With no eligible actor, wait without spending anything; ending the
+  run cancels it.
 - Checks require success/failure branches. Missing critical branches use the
   corresponding normal branch while keeping critical feedback.
 - Each story vote has a fixed set of choices and a visible timeout default.
-  Connected living players have one replaceable ballot. Close after `45 seconds`
-  of unpaused gameplay, or once everyone eligible has voted. A ballot at or after
-  the deadline is too late.
-- The choice with the most votes wins. A tied leader ballot wins if the leader is
-  connected and living; otherwise use the tied choice backed by the lowest seat
-  index. With no ballots, select the declared default. Voting consumes no randomness.
-- Disconnect, death, or departure discards ballots. Reconnect does not restore
-  them. A disconnected leader keeps the role during their seat reservation but
-  cannot break ties. A dead connected leader may transfer it to a connected living
-  player. Departure/expiry vacates the role: choose a connected living replacement
-  uniformly, or wait without a random draw until someone eligible reconnects.
+  Each connected player, living or dead, has one replaceable ballot. Close after
+  `45 seconds` of unpaused gameplay, or once every connected player has voted. A
+  ballot at or after the deadline is too late.
+- The choice with the most votes wins. On a tie, the host rolls one die with a
+  side for each tied choice, uniformly, and every player sees the roll before
+  the result applies. With no ballots, select the declared default. A tie roll
+  is the only random draw voting makes.
+- Disconnect or departure discards ballots. Reconnect does not restore them.
 
 ### Combat, effects, and inventory
 
 - Fixed positive content-defined HP, not HP derived from stats. Each run starts
   at maximum HP, empty inventory, and no effects. HP, death, and items persist
-  between encounters; no passive healing or resurrection. Spell charges reset
-  each encounter. A new run resets all run-owned state.
+  between encounters; no passive healing, and the revive item is the only way
+  back from death. Spell charges reset each encounter. A new run resets all
+  run-owned state.
 - Turn order is descending Dexterity, then players by seat index, then enemies in
   the encounter's authored order. One attack, spell, item, or pass per turn.
   There is no combat grid or range. A player has `30 seconds` of unpaused
@@ -177,8 +185,14 @@ everyone; clients never decide their own successful actions.
   derive from the stat.
 - A spell names its check stat, effect, target type, magnitude where applicable,
   and per-encounter charges. Casting spends one charge and the turn, even on failure.
-- Five effects: direct damage, healing, guard, next-check bonus, next-check penalty.
-  Each spell/item applies one effect to one target. Healing caps at maximum HP.
+- Six effects: direct damage, healing, guard, next-check bonus, next-check penalty,
+  and revive. Each spell/item applies one effect to one target. Healing caps at
+  maximum HP.
+- Revive is item-only (no spell revives). It targets a dead ally whose character
+  is still reserved, restores half maximum HP rounded down (minimum one) with no
+  effects, and the revived character acts from the next round in normal turn
+  order. Spent spell charges stay spent. The full route offers at most two
+  revive items.
 - Successful spells use their authored magnitude. Critical success doubles damage,
   healing, or modifier magnitude; critical guard protects two hits instead of one.
   Normal failure has no effect. Critical failure redirects damage/penalties to a
@@ -192,26 +206,34 @@ everyone; clients never decide their own successful actions.
   `stat + bonus - penalty`, clamped to `0..=100`. Critical extremes still win.
   Passes, item uses, and rejected actions do not consume check modifiers. Effects
   clear on death, removal, encounter end, or run reset, not on disconnect.
-- Enemies choose a legal action uniformly from their kit, then choose a valid target
-  uniformly. With no legal action they pass. Kits may contain only spells. No separate AI system.
+- Each kit entry has an optional positive integer weight (default `1`). Enemies
+  choose a legal action with probability proportional to its weight, then choose
+  a valid target uniformly. With no legal action they pass. Kits may contain only
+  spells. Weights are data, not a separate AI system.
 - Four inventory slots, one item per slot, filled lowest-index first. Inventories
   are visible to the whole party. Items work
   only on the holder's combat turn, without a roll, and spend the item and turn
   together. Damage/penalties target living opponents; healing/guard/bonuses target
   living allies including self, or self only, as authored. A legal full-HP or
   replacement use still spends the item. Invalid actions spend nothing.
+- During exploration or a loot phase, a living player may discard one of their
+  own items, permanently. There is no trading between players.
 - Story grants resolve in authored order. Skip a recipient without a living
   reserved character or free slot, with feedback. No replacement or reward queue.
 - Victory offers each defeated enemy's authored zero-to-two-item loot list, not
   random drops or its held inventory. Player corpses and wipes create no loot.
-- Each loot item gets replaceable ballots for a living reserved recipient with a
-  free slot. All items share one `45 second` phase, closing early only when every
-  eligible voter has voted on every item. Resolve in authored enemy order then
+- Each connected player, living or dead, gets a replaceable ballot per loot item
+  naming a living reserved recipient with a free slot. All items share one
+  `45 second` phase, closing early only when every connected player has voted on
+  every item. Resolve in authored enemy order then
   loot-slot order, rechecking eligibility and space before each award. Use the story tie
   rule, but no default recipient: unassigned items disappear. Run end cancels loot.
-- Dead players spectate, cannot vote or act, and cannot be living targets. Their
-  only gameplay control is leader transfer when applicable. Enemy defeat wins;
-  party wipe or a bounded engine round limit loses, including in the boss fight.
+- Dead characters are shown as "Expired". Their players keep voting on story
+  choices and loot and pressing continue, but cannot move, act in combat, roll
+  checks, or start interactions. Only revive can target them.
+- Enemy defeat wins. Party wipe loses. So does the end of round `20` ("the store
+  is closing"), including in the boss fight; from round `16` the UI shows the
+  rounds left. `20` is a starting value to tune in the hot-seat build.
 
 ## Technical approach
 
@@ -225,6 +247,7 @@ everyone; clients never decide their own successful actions.
 | Simulation | Authoritative rules running in the host player's process |
 | Stories and definitions | Repository-owned JSON |
 | Map authoring | Tiled, packaged JSON map (`.tmj`) with collision/event objects |
+| Text | `kb_text_shape` + `stb_truetype` from Odin's vendor collection, own glyph atlas |
 | Local preferences | Settings file; no authoritative save data |
 | Distribution | Windows/Linux builds uploaded through SteamPipe |
 
@@ -254,6 +277,16 @@ Code shape, decided before the first line:
   top of every `"c"` callback before it allocates or logs.
 - Encode network messages field by field with bounds checks. Do not send raw
   struct memory.
+- Do not use raylib's text functions: they draw one glyph per codepoint, which
+  breaks Thai marks and cannot follow Chinese, Japanese, or Thai line-break
+  rules. Text goes through `vendor:kb_text_shape` (segmentation, line breaks,
+  shaping), `vendor:stb/truetype` (rasterizing by glyph index), and our own glyph
+  atlas texture drawn with raylib. Both libraries ship with Odin. The hot-seat
+  build may use raylib's text functions with placeholder English text; the
+  shaped text path is part of **Complete the loop**.
+- The Steamworks SDK is never committed; its terms do not allow republishing it.
+  Download it from the Steamworks partner site into `vendor/steamworks/`, which
+  is gitignored, as is the development `steam_appid.txt`.
 
 Start on the current compiler release (`dev-2026-11a` when this was written). Pin
 the compiler, raylib, Steamworks SDK, and binding revisions when the first
@@ -267,6 +300,10 @@ the binary does not require a newer glibc than players have. Confirm this when
 naming the supported Linux baseline.
 
 ## Online play and servers
+
+The networking and disconnect rules in this section are a draft. Revisit them
+once the **Prove the stack** milestone works; the hot-seat build does not depend
+on them.
 
 ### Who runs the server?
 
@@ -336,9 +373,10 @@ an economy, or persistent progression. Dedicated servers are not a launch promis
   Reconnect binds the same Steam identity, restores the reserved character through
   a full state resync, and acknowledges it before accepting new actions. Allow
   only one active connection per seat; stale disconnects cannot evict its replacement.
-- While others play, a disconnected character stays targetable and its turns time
-  out to pass. Explicit leave or grace expiry removes the character, inventory,
-  effects, and ballots, without corpse loot. It cannot rejoin that ongoing run.
+- While others play, a disconnected character stays targetable and its turns
+  pass immediately, without waiting for the turn timer. Explicit leave or grace
+  expiry removes the character, inventory, effects, and ballots, without corpse
+  loot. It cannot rejoin that ongoing run.
 - With no connected living players, pause gameplay and gameplay timers, even if
   the host is watching as a dead spectator. Seat expiry stays absolute. Apply due
   expiries before new input or deadline resolution; pause/resume cannot reroll events.
@@ -359,7 +397,7 @@ an economy, or persistent progression. Dedicated servers are not a launch promis
 ## Content and production
 
 Keep stories, characters, enemies, spells, items, maps, localized text, and assets
-in this repository. Engine code defines the five effects and all resolution rules;
+in this repository. Engine code defines the six effects and all resolution rules;
 JSON assembles them into the supermarket adventure. No executable content scripts.
 
 Keep the finite orthogonal Tiled map with `16x16` tiles and explicit collision/event
@@ -373,9 +411,11 @@ values/resources, reachable branches, and terminating automatic transitions.
 Partial development content is allowed; release checks separately verify the full
 inventory, per-route counts, and mandatory boss. Playtests establish run length.
 
-Preserve editable art/audio sources and export steps. Use Ogg Vorbis for music and
-ambience, signed 16-bit PCM WAV for SFX, and mono/stereo `48 kHz` audio. Package
-fonts for English/French; have a fluent collaborator review French text. Missing
+Preserve editable art/audio sources and export steps. Audio files and large
+binary sources (`.wav`, `.ogg`, `.flac`, `.psd`, `.kra`) go through Git LFS, as
+set in `.gitattributes`; run `git lfs install` once per clone. PNG, Aseprite,
+Tiled, and JSON files are small and stay in normal Git. Use Ogg Vorbis for music and
+ambience, signed 16-bit PCM WAV for SFX, and mono/stereo `48 kHz` audio. Missing
 presentation assets get safe fallbacks, but missing required game data prevents play.
 
 Every asset needs a recorded creator, source, license/permission, and credit.
@@ -388,6 +428,55 @@ Use standard per-user data locations on each OS. Save through a temporary file a
 safe replacement; report failures without destroying the previous usable settings.
 Preserve malformed/future files and use in-memory defaults instead of crashing.
 
+### Localization
+
+Launch languages: English, French, Simplified Chinese, Japanese, Korean, Thai,
+Polish, Czech, Turkish, and Russian. A language ships only when every string is
+translated and a native speaker has reviewed it in the game. Steam's store page
+lists only languages that meet that bar.
+
+Fonts, all SIL OFL and packaged with the game:
+
+| Languages | Font |
+| --- | --- |
+| English, French, Polish, Czech, Turkish, Russian | Fusion Pixel 12px proportional, `latin` variant |
+| Simplified Chinese, Japanese, Korean | Fusion Pixel 12px proportional, `zh-Hans`, `ja`, and `ko` variants |
+| Thai | Noto Sans Thai (vector; Thai marks need more than 12 pixels) |
+
+- Use the matching regional variant: the same Han character is drawn differently
+  in Chinese and Japanese, and native readers notice the wrong one. Confirm each
+  font covers every character its language uses; the content check enforces it.
+- Text is drawn at native resolution, laid out in the `640x360` UI coordinates.
+  Pixel fonts render at whole multiples of `12px` with hard edges, so they match
+  the UI's pixels; the Thai font renders smoothly at the same scale. Each
+  language sets its own line height.
+- Line breaks: spaces for Latin, Cyrillic, and Korean; between characters for
+  Chinese and Japanese, without starting a line on closing punctuation such as
+  `。、」` or ending one on opening punctuation. Thai has no spaces between words,
+  so translators put a zero-width space (`U+200B`) at word boundaries. The
+  content check flags long Thai runs without one.
+- Localized strings live in one JSON file per language, keyed by string ID. Use
+  named placeholders (`{actor}`, `{item}`), never concatenated fragments, so each
+  language can reorder words. Plurals use CLDR categories (Russian, Polish, and
+  Czech need several forms; Chinese, Japanese, Korean, and Thai need none).
+- Never change case in code. Turkish uppercases `i` to `İ`, so store text exactly
+  as displayed.
+- Network messages carry IDs and numbers, never display text. Each client shows
+  its own language, so mixed-language parties work.
+- The default language follows Steam's game language and can be changed in
+  settings at any time, which rebuilds the glyph atlas.
+- Steam names can contain any script. Shape them on lobby join through every
+  packaged font in turn, and draw a placeholder box for anything none of them
+  cover, such as emoji. During the run, players are shown by character, not by
+  Steam name.
+- Development uses a pseudo-language that lengthens every string by 40% and
+  mixes in accented, Cyrillic, and CJK characters, so layout overflow and missing
+  glyphs show up before real translations exist.
+- Translate after the English and French text freeze, not during writing. Puns
+  and jokes need adapting, not literal translation; translators get context
+  (speaker, scene, character limits) for each string. Every translator is
+  credited and needs written rights like any other contributor.
+
 ## Testing and release quality
 
 Keep verification proportional to a four-player game:
@@ -396,7 +485,8 @@ Keep verification proportional to a four-player game:
   departures, deadlines, and reset. Inject time/randomness; do not use sleeps or
   statistical assertions where exact outcomes can be tested.
 - Content checks for invalid data, missing references/assets, supported routes,
-  and English/French text. Do not duplicate gameplay logic in test expectations.
+  and every language's text, fonts, and placeholders. Do not duplicate gameplay
+  logic in test expectations.
 - Two-, three-, and four-player tests for convergence, rejected/duplicate input,
   guest reconnect, host loss, slow peers, version mismatch, and three consecutive
   lobby -> run -> summary -> lobby loops.
@@ -434,6 +524,8 @@ non-blocking issues. A plan, successful compile, or one happy-path run is not re
    that the host must remain connected and active runs are not saved.
 4. Publish the Coming Soon page and meet its required public visibility period.
    Show actual gameplay, collect wishlists, and playtest before promising a date.
+   Run outside playtests through Steam Playtest rather than handing out builds.
+   Steam Next Fest needs a demo, so it waits on the later demo decision.
 5. Upload separate Windows/Linux depots through SteamPipe. Include required runtime
    libraries and third-party notices, and keep SDK tools and secrets out of packages.
    Use a private beta branch to test clean installs, updates, and mixed-OS parties.
@@ -447,6 +539,19 @@ An optional static website can present the game, screenshots/trailer, changelog,
 news, Steam link, and legal/privacy/support information. It is not a backend and
 never participates in gameplay. Publish only approved media and a privacy notice
 matching the actual host, logs, and embeds; no analytics by default.
+
+## Team and roles
+
+| Role | Owner |
+| --- | --- |
+| Design, code, builds, Steam release | Nugget |
+| Pixel art (characters, enemies, tileset, combat view, UI) | Unassigned |
+| Music and SFX | Unassigned |
+| Translation and native review (one per language) | Unassigned |
+
+Name an owner, or a budget for commissioned or licensed work, for every role
+before **Produce and playtest the adventure** starts. Placeholder art is fine
+until then.
 
 ## Milestones and current progress
 

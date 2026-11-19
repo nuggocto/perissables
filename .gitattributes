@@ -1,0 +1,13 @@
+# Audio and large binary art sources go through Git LFS (run `git lfs install` once per clone).
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.ogg  filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+*.psd  filter=lfs diff=lfs merge=lfs -text
+*.kra  filter=lfs diff=lfs merge=lfs -text
+
+# Small binary files stay in normal Git but are never diffed or line-ending converted.
+*.png      binary
+*.aseprite binary
+*.ase      binary
+*.ttf      binary
+*.otf      binary

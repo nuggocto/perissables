@@ -2,22 +2,28 @@
 /build/
 /bin/
 /dist/
-*.profraw
-*.profdata
+*.exe
+*.pdb
+*.ilk
+/perissables
 
 # Generated verification output
 /artifacts/
-/coverage/
+
+# Steamworks SDK (not redistributable in source form) and dev app ID file
+/vendor/steamworks/
+steam_appid.txt
 
 # Local configuration and secrets
 .env
 .env.*
-!.env.example
-mise.local.toml
 
-# Editors and operating systems
+# Editors and tools
 .idea/
 .vscode/
+*.tiled-session
+
+# Operating systems
 .DS_Store
 Thumbs.db
 
