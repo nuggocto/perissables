@@ -4,7 +4,8 @@ A stupid, funny, multiplayer tabletop-style RPG about supermarket food trying
 not to die. Two to four friends pick premade characters, explore a grocery store,
 make bad decisions, and survive dice checks and turn-based combat together.
 
-**Status: planning.** There is no playable build yet. This document is the single
+**Status: planning the digital adaptation.** We already play this game with
+friends at the table. There is no playable digital build yet. This document is the single
 project plan: what we are making, how it works, and how we intend to release it.
 The repository slug is `perissables`.
 
@@ -38,10 +39,8 @@ Setting, tone, and visual direction:
 - Visible keyboard focus, keyboard-only navigation, and readable text at
   `1280x720` and `1920x1080`. Target smooth `60 FPS` presentation.
 - Music, ambience, and event-driven SFX. No voice playback or voice chat.
-- Ten languages: English, French, Simplified Chinese, Japanese, Korean, Thai,
-  Polish, Czech, Turkish, and Russian, each with a packaged font, correct
-  shaping, and line breaking that follows the language's own rules (see
-  **Localization**).
+- English and French are the first language candidates. Confirm each language
+  after a writer and native reviewer can play the finished scenes (see **Localization**).
 
 Example characters, not final balance sheets:
 
@@ -87,7 +86,7 @@ Measure duration in playtests; an estimate in a story file is not evidence.
 | Story beats per full surviving run | Four to six checks, three major choices, `25–40` dialogue/choice beats |
 | Onboarding | The route's first check and first encounter teach the rules in dialogue |
 | Music | Lobby, exploration, combat, and boss tracks |
-| Other audio | Two ambience loops and at least twenty distinct SFX |
+| Other audio | Two ambience loops; distinguish a hit, miss, guard and critical by ear in a fight |
 
 Early wipes naturally present less content. No builds, leveling, skill trees,
 deep equipment, account progression, procedural maps, arbitrary scripts, public
@@ -127,6 +126,8 @@ successful actions.
 - A stat is its exact success chance: stat `45` succeeds on `45%` of rolls,
   criticals included (`1%` critical, `44%` normal). The UI shows the actor, the
   stat, and the final chance before every roll.
+- After modifiers, show the actual success chance: `clamp(target, 1, 99)%`.
+  Even at target `0`, a `1` succeeds; even at target `100`, a `100` fails.
 - The host owns the run's random generator. Rejected actions consume no random
   draws. Tests supply known random states and explicit time.
 
@@ -140,21 +141,23 @@ successful actions.
   sequence runs at a time, including its story, combat, and loot. Freeze world
   positions and clear held movement until exploration resumes; do not queue
   extra interactions or movement for later.
+- Before freezing the scene, identify the initiator and object to everyone
+  ("Leek Bard rang the freezer bell"). In exploration, try one keyboard ping
+  that marks the caller's tile and character for the party. It starts no event.
 - Stories are data-driven state machines with dialogue, check, encounter,
   transition, return, and end nodes. Effects use supported flag/item operations,
   never story-specific executable code. Bound automatic transition chains.
-- "Connected players" below includes dead ones. Dialogue advances when every
-  connected player presses continue or after `20 seconds` of unpaused gameplay.
-  If there are at least two and exactly one has not pressed continue, cut the
-  remaining wait to at most `5 seconds`. In a two-player party, the first press
-  starts this shortcut. Disconnect discards a player's continue press but does
-  not extend the deadline.
-- The player who started the interaction rolls the story checks in its sequence,
-  using their own character's stats. If that player is not connected and living
-  when a check resolves, use the connected living player with the lowest seat
-  index. Selecting the actor, applying modifiers, rolling, and committing happen
-  together. With no eligible actor, wait without spending anything; ending the
-  run cancels it.
+- "Connected players" includes dead ones. For the prototype, dialogue waits
+  for each connected reader to continue. Show who is still reading. Disconnect
+  removes that reader from the wait. Test a pair with different reading speeds
+  before setting any automatic advance timer.
+- A story vote can choose an approach before a check. Then the initiator names
+  one connected living volunteer (self is valid); show each candidate's stat
+  and odds. No second vote. For online play, if nobody is nominated within
+  `20 seconds` of unpaused gameplay, the initiator rolls. If that roller or a
+  nominated roller is ineligible, use the lowest connected living seat. If the initiator
+  leaves before nominating, use that fallback immediately. Recheck eligibility
+  and resolve the check in one step. With no eligible actor, wait without spending anything.
 - Checks require success/failure branches. Missing critical branches use the
   corresponding normal branch while keeping critical feedback.
 - Each story vote has a fixed set of choices and a visible timeout default.
@@ -176,6 +179,8 @@ successful actions.
   run-owned state.
 - Turn order is descending Dexterity, then players by seat index, then enemies in
   the encounter's authored order. One attack, spell, item, or pass per turn.
+  In the prototype, the Paladin can instead **Cover** a living teammate:
+  apply ordinary one-hit guard without rolling, spending the Paladin's turn.
   There is no combat grid or range. A player has `30 seconds` of unpaused
   gameplay to act, then passes automatically.
 - Each character and enemy has one authored basic attack naming its check stat
@@ -188,11 +193,13 @@ successful actions.
 - Six effects: direct damage, healing, guard, next-check bonus, next-check penalty,
   and revive. Each spell/item applies one effect to one target. Healing caps at
   maximum HP.
-- Revive is item-only (no spell revives). It targets a dead ally whose character
-  is still reserved, restores half maximum HP rounded down (minimum one) with no
-  effects, and the revived character acts from the next round in normal turn
-  order. Spent spell charges stay spent. The full route offers at most two
-  revive items.
+- Revive is item-only. Keep revive stickers on the party's shared sheet so the
+  only sticker cannot get stuck in an Expired character's pocket. A connected
+  living player can spend one on a dead reserved ally as their combat action,
+  or during free exploration. Restore half maximum HP rounded down (minimum
+  one), clear effects, and keep spent charges spent. In combat the ally acts
+  next round; in exploration they can act immediately. The full route offers
+  at most two stickers. A wipe still ends the run.
 - Successful spells use their authored magnitude. Critical success doubles damage,
   healing, or modifier magnitude; critical guard protects two hits instead of one.
   Normal failure has no effect. Critical failure redirects damage/penalties to a
@@ -210,30 +217,28 @@ successful actions.
   choose a legal action with probability proportional to its weight, then choose
   a valid target uniformly. With no legal action they pass. Kits may contain only
   spells. Weights are data, not a separate AI system.
-- Four inventory slots, one item per slot, filled lowest-index first. Inventories
-  are visible to the whole party. Items work
+- Four personal inventory slots, one ordinary item per slot, filled lowest-index
+  first. Revive stickers use no personal slot. Inventories
+  are visible to the whole party. Ordinary items work
   only on the holder's combat turn, without a roll, and spend the item and turn
   together. Damage/penalties target living opponents; healing/guard/bonuses target
   living allies including self, or self only, as authored. A legal full-HP or
   replacement use still spends the item. Invalid actions spend nothing.
-- During exploration or a loot phase, a living player may discard one of their
+- During free exploration, a living player may discard one of their
   own items, permanently. There is no trading between players.
-- Story grants resolve in authored order. Skip a recipient without a living
+- Personal item grants resolve in authored order. Skip a recipient without a living
   reserved character or free slot, with feedback. No replacement or reward queue.
-- Victory offers each defeated enemy's authored zero-to-two-item loot list, not
-  random drops or its held inventory. Player corpses and wipes create no loot.
-- Each connected player, living or dead, gets a replaceable ballot per loot item
-  naming a living reserved recipient with a free slot. All items share one
-  `45 second` phase, closing early only when every connected player has voted on
-  every item. Resolve in authored enemy order then
-  loot-slot order, rechecking eligibility and space before each award. Use the story tie
-  rule, but no default recipient: unassigned items disappear. Run end cancels loot.
+- Author rewards by scene. When there is a tradeoff, present one ordinary story
+  vote over the whole offer (for example, claim a revive or spend the coupon to
+  slow the cart). State who gets what before voting; resolve the winning branch
+  with the story grant rules. No per-item ballots or automatic corpse loot.
 - Dead characters are shown as "Expired". Their players keep voting on story
-  choices and loot and pressing continue, but cannot move, act in combat, roll
+  choices (including rewards) and pressing continue, but cannot move, act in combat, roll
   checks, or start interactions. Only revive can target them.
 - Enemy defeat wins. Party wipe loses. So does the end of round `20` ("the store
-  is closing"), including in the boss fight; from round `16` the UI shows the
-  rounds left. `20` is a starting value to tune in the hot-seat build.
+  is closing"), including in the boss fight. Show rounds left from the first
+  turn; call out the last five. Test whether anyone changes a decision because
+  of closing time before tuning the limit.
 
 ## Technical approach
 
@@ -345,7 +350,7 @@ an economy, or persistent progression. Dedicated servers are not a launch promis
 - Guests send intentions, not outcomes. The host validates phase, identity,
   sequence, target, and bounds before mutation, then sends results and snapshots.
   Use ordered action IDs to reject replays and duplicates. The host assigns an
-  input-window ID to each dialogue beat, story vote, combat turn, loot phase,
+   input-window ID to each dialogue beat, story vote, roller nomination, combat turn,
   and entry into exploration. These IDs are not reused within a session,
   including across runs. The public snapshot carries the current ID. Clients
   attach the ID they see when they capture the input. Reject any gameplay
@@ -430,12 +435,14 @@ Preserve malformed/future files and use in-memory defaults instead of crashing.
 
 ### Localization
 
-Launch languages: English, French, Simplified Chinese, Japanese, Korean, Thai,
-Polish, Czech, Turkish, and Russian. A language ships only when every string is
-translated and a native speaker has reviewed it in the game. Steam's store page
-lists only languages that meet that bar.
+Start with the language the scene writer knows best; English and French are the
+first candidates for release. Simplified Chinese, Japanese, Korean, Thai,
+Polish, Czech, Turkish, and Russian are candidates for later, with no promised
+date. Ship a language only when someone owns the adaptation, every string is
+translated, and a native speaker has reviewed the jokes and layout in the game.
+Only then list it on Steam.
 
-Fonts, all SIL OFL and packaged with the game:
+Candidate fonts (SIL OFL); package and check the variants needed by shipped languages:
 
 | Languages | Font |
 | --- | --- |
@@ -455,7 +462,8 @@ Fonts, all SIL OFL and packaged with the game:
   `。、」` or ending one on opening punctuation. Thai has no spaces between words,
   so translators put a zero-width space (`U+200B`) at word boundaries. The
   content check flags long Thai runs without one.
-- Localized strings live in one JSON file per language, keyed by string ID. Use
+- Give dialogue, choices, and UI text string IDs from the first digital build.
+  Localized strings live in one JSON file per language. Use
   named placeholders (`{actor}`, `{item}`), never concatenated fragments, so each
   language can reorder words. Plurals use CLDR categories (Russian, Polish, and
   Czech need several forms; Chinese, Japanese, Korean, and Thai need none).
@@ -469,10 +477,10 @@ Fonts, all SIL OFL and packaged with the game:
   packaged font in turn, and draw a placeholder box for anything none of them
   cover, such as emoji. During the run, players are shown by character, not by
   Steam name.
-- Development uses a pseudo-language that lengthens every string by 40% and
+- The first digital build includes a pseudo-language that lengthens every string by 40% and
   mixes in accented, Cyrillic, and CJK characters, so layout overflow and missing
   glyphs show up before real translations exist.
-- Translate after the English and French text freeze, not during writing. Puns
+- Translate after the source text freezes, not during writing. Puns
   and jokes need adapting, not literal translation; translators get context
   (speaker, scene, character limits) for each string. Every translator is
   credited and needs written rights like any other contributor.
@@ -485,7 +493,7 @@ Keep verification proportional to a four-player game:
   departures, deadlines, and reset. Inject time/randomness; do not use sleeps or
   statistical assertions where exact outcomes can be tested.
 - Content checks for invalid data, missing references/assets, supported routes,
-  and every language's text, fonts, and placeholders. Do not duplicate gameplay
+  and each shipped language's text, fonts, and placeholders. Do not duplicate gameplay
   logic in test expectations.
 - Two-, three-, and four-player tests for convergence, rejected/duplicate input,
   guest reconnect, host loss, slow peers, version mismatch, and three consecutive
@@ -559,18 +567,18 @@ No calendar estimate until the first online slice works. Track active tasks in
 issues; keep only milestone completion and important decisions here.
 
 - [x] Agree on the premise, art direction, Odin + raylib, and player-hosted Steam model.
-- [ ] **Play the rules locally.** Build the rules module and a hot-seat build on
-  one machine, with no Steam and placeholder graphics. Two to four people share
-  a keyboard through one check, one fight, and one loot vote. This is
-  development-only and can run alongside the next milestone. If the dice and
-  combat are not fun here, change the rules before building networking on them.
+- [ ] **Bring one familiar scene to the screen.** Pick a scene from an actual
+  session with friends and implement its choices, rolls, and consequences in a
+  local hot-seat build with placeholder graphics. Use the table rules as the
+  reference. Check that each player can tell whose decision it is, what they
+  can do, and why a roll changed the outcome.
 - [ ] **Prove the stack.** Pin tools, compile both targets, and connect two machines
   through Steam. Prove invite authorization, cross-platform play, guest reconnect,
   and host-loss feedback before building the full game around the integration.
 - [ ] **Make one tiny online run.** Two players select characters, move, trigger one
   interaction, roll one check, resolve combat, and reach the same summary. Put two
   people through it immediately, with placeholder graphics if needed.
-- [ ] **Complete the loop.** Implement the remaining rules, content validation,
+- [ ] **Complete the loop.** Implement the playtested rules, content validation,
   supermarket map, scalable UI, settings, localization, and audio. Test repeated
   runs and failure paths as they arrive.
 - [ ] **Produce and playtest the adventure.** Finish the release inventory and
